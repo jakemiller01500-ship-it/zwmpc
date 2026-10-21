@@ -73,12 +73,23 @@ export default function StorageMonitor() {
 
   // Reusable Terminal Window Component
     // Reusable Terminal Window Component
-  const TerminalWindow = ({ title, output }) => (
-    <div style={{ marginBottom: '20px' }}>
-      <div style={{ background: '#1e1e1e', color: '#4af626', padding: '8px 15px', borderTopLeftRadius: '8px', borderTopRightRadius: '8px', fontFamily: 'monospace', borderBottom: '1px solid #333' }}>
-        {title}
-      </div>
-      <pre style={{ background: '#0d0d0d', color: '#d4d4d4', padding: '15px', margin: 0, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', overflowX: 'auto', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.4' }}>
+    // Reusable Terminal Window Component
+  const TerminalWindow = ({ command, output }) => (
+    <div style={{ marginBottom: '20px', background: '#0d0d0d', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+      <pre style={{ 
+          color: '#d4d4d4', 
+          padding: '15px', 
+          margin: 0, 
+          fontFamily: 'monospace', 
+          fontSize: '0.85rem', 
+          lineHeight: '1.4',
+          textAlign: 'left', // Ensures text is not centered
+          whiteSpace: 'pre-wrap'
+      }}>
+        {/* Green Command Line */}
+        <span style={{ color: '#4af626' }}>$ {command}</span>
+        {"\n"}
+        {/* Standard Output */}
         {output || 'No output'}
       </pre>
     </div>
@@ -161,15 +172,15 @@ export default function StorageMonitor() {
         </table>
       </div>
 
-      {/* --- BOTTOM SECTION: RAW TERMINAL EVIDENCE --- */}
+            {/* --- BOTTOM SECTION: RAW TERMINAL EVIDENCE --- */}
       <h2 style={{ color: '#333', borderBottom: '2px solid #ccc', paddingBottom: '10px' }}>Terminal Evidence (Live)</h2>
       <p style={{ color: '#666', marginBottom: '20px' }}>These are the raw outputs from the Linux shell running on your Render backend.</p>
 
-      <TerminalWindow title="df -h" output={rawData.dfH} />
-      <TerminalWindow title="df -i" output={rawData.dfI} />
-      <TerminalWindow title="du -sh /opt/render/project/src/*" output={rawData.duSh} />
-      <TerminalWindow title="du -ah /opt/render/project/src | sort -rh | head -n 15" output={rawData.duSort} />
-      <TerminalWindow title="find /opt/render/project/src -type f -size +10M -exec ls -lh {} +" output={rawData.findLarge} />
+      <TerminalWindow command="df -h" output={rawData.dfH} />
+      <TerminalWindow command="df -i" output={rawData.dfI} />
+      <TerminalWindow command="du -sh /opt/render/project/src/*" output={rawData.duSh} />
+      <TerminalWindow command="du -ah /opt/render/project/src | sort -rh | head -n 15" output={rawData.duSort} />
+      <TerminalWindow command="find /opt/render/project/src -type f -size +10M -exec ls -lh {} +" output={rawData.findLarge} />
 
       <div style={{ marginTop: '20px', padding: '10px', background: '#e9ecef', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#555' }}>
         <div>Logged in to Capstone as: <strong>{user.username}</strong> ({user.role})</div>
