@@ -6,7 +6,9 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: 'https://zwmpc.vercel.app' 
+}));
 app.use(express.json());
 
 // Database Connection (Aiven requires SSL)
