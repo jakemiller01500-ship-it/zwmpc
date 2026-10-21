@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Auth from './Auth';
 import Dashboard from './Dashboard';
 import Branches from './Branches';
+import StorageMonitor from './StorageMonitor';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<h1>Welcome to the ZWMPC Dashboard</h1>} />
           <Route path="branches" element={<Branches />} />
+          <Route path="storage" element={<StorageMonitor />} />
         </Route>
       </Routes>
     </BrowserRouter>

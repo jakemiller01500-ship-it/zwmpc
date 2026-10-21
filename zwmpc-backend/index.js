@@ -3,6 +3,8 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { exec } = require('child_process');
+
 require('dotenv').config();
 
 const app = express();
@@ -103,6 +105,36 @@ app.get('/api/branches', verifyToken, (req, res) => {
     db.query('SELECT * FROM branches', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
+    });
+});
+
+// --- ADMIN SYSTEM STORAGE MONITOR ---
+app.get('/api/system/storage', verifyToken, requireRole(['admin']), (req, res) => {
+    // We combine the commands into one string to run them sequentially
+    const command = `
+        echo "---DISK_USAGE---"
+        df -h /
+        echo "---INODE_USAGE---"
+        df -i /
+        echo "---LARGEST_FILES---"
+        # This finds the top 20 largest files/directories in the Render project folder
+        du -ah /opt/render/project/src 2>/dev/null | sort -rh | head -n 20
+    `;
+
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Exec error: ${error}`);
+            return res.status(500).json({ error: 'Failed to execute system commands' });
+        }
+
+        // Split the output by our custom markers
+        const parts = stdout.split('---');
+        
+        const disk = parts[1] ? parts[1].replace('DISK_USAGE---\n', '').trim() : '';
+        const inodes = parts[2] ? parts[2].replace('INODE_USAGE---\n', '').trim() : '';
+        const files = parts[3] ? parts[3].replace('LARGEST_FILES---\n', '').trim() : '';
+
+        res.json({ disk, inodes, files });
     });
 });
 

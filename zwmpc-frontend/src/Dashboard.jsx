@@ -32,9 +32,16 @@ export default function Dashboard() {
         <p>Role: <strong>{user.role.toUpperCase()}</strong></p>
         <hr />
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <a href="/dashboard" style={{ color: 'white' }}>Home</a>
-          <a href="/dashboard/branches" style={{ color: 'white' }}>Branch Management</a>
-        </nav>
+  <a href="/dashboard" style={{ color: 'white' }}>Home</a>
+  <a href="/dashboard/branches" style={{ color: 'white' }}>Branch Management</a>
+  
+  {/* ONLY ADMINS SEE THIS LINK */}
+  {user.role === 'admin' && (
+    <a href="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold' }}>
+      🖥️ System Storage Monitor
+    </a>
+  )}
+</nav>
         <button 
           onClick={handleLogout} 
           style={{ marginTop: '30px', padding: '10px', width: '100%', cursor: 'pointer' }}>
