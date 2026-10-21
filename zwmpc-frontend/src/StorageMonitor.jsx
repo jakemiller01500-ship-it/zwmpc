@@ -4,22 +4,25 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 
 export default function StorageMonitor() {
   const [data, setData] = useState(null);
+  const [rawData, setRawData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [sortAsc, setSortAsc] = useState(false); // false = Largest first
+  const [sortAsc, setSortAsc] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user'));
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Use useCallback so we can call this from setInterval without dependency warnings
   const fetchStorage = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/system/storage`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setData(res.data);
+      // Fetch both JSON data (for graphs) and Raw data (for terminal)
+      const [resData, resRaw] = await Promise.all([
+        axios.get(`${API_URL}/api/system/storage`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/api/system/raw-storage`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      setData(resData.data);
+      setRawData(resRaw.data);
       setLastUpdated(new Date());
       setError('');
     } catch (err) {
@@ -29,16 +32,12 @@ export default function StorageMonitor() {
     }
   }, [API_URL, token]);
 
-  // Auto-refresh every 60 seconds
   useEffect(() => {
     let timeoutId;
-    
     const fetchData = async () => {
       await fetchStorage();
-      // Schedule the next fetch (60s prevents overlapping requests if Render is asleep)
-      timeoutId = setTimeout(fetchData, 60000); 
+      timeoutId = setTimeout(fetchData, 60000);
     };
-    
     fetchData();
     return () => clearTimeout(timeoutId);
   }, [fetchStorage]);
@@ -51,16 +50,12 @@ export default function StorageMonitor() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // --- SORTING LOGIC ---
-  const sortedFiles = data ? [...data.files].sort((a, b) => {
-    return sortAsc ? a.size - b.size : b.size - a.size;
-  }) : [];
+  const sortedFiles = data ? [...data.files].sort((a, b) => sortAsc ? a.size - b.size : b.size - a.size) : [];
 
   if (loading && !data) return <h2>Running Linux commands on Render... (If server is asleep, this takes 50s)</h2>;
   if (error) return <h2 style={{ color: 'red' }}>{error}</h2>;
-  if (!data) return <h2>No data</h2>;
+  if (!data || !rawData) return <h2>No data</h2>;
 
-  // Disk Calculations
   const usedPercent = ((data.disk.usedBytes / data.disk.totalBytes) * 100).toFixed(1);
   const appPercent = ((data.appSize / data.disk.totalBytes) * 100).toFixed(1);
   const inodePercent = ((data.inodes.used / data.inodes.total) * 100).toFixed(1);
@@ -76,6 +71,18 @@ export default function StorageMonitor() {
   if (usedPercent > 85) { statusText = 'CRITICAL'; statusColor = 'red'; }
   else if (usedPercent > 70) { statusText = 'WARNING'; statusColor = 'orange'; }
 
+  // Reusable Terminal Window Component
+  const TerminalWindow = ({ title, output }) => (
+    <div style={{ marginBottom: '20px' }}>
+      <div style={{ background: '#1e1e1e', color: '#4af626', padding: '8px 15px', borderTopLeftRadius: '8px', borderTopRightRadius: '8px', fontFamily: 'monospace', borderBottom: '1px solid #333' }}>
+        student@capstone-vps:~$ {title}
+      </div>
+      <pre style={{ background: '#0d0d0d', color: '#d4d4d4', padding: '15px', margin: 0, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', overflowX: 'auto', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.4' }}>
+        {output || 'No output'}
+      </pre>
+    </div>
+  );
+
   return (
     <div style={{ fontFamily: 'sans-serif' }}>
       
@@ -87,22 +94,18 @@ export default function StorageMonitor() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ color: '#333', margin: 0 }}>Server storage and stored files</h2>
         <div style={{ fontSize: '0.9rem', color: '#666' }}>
-          Live (Auto-refreshes every 60s) | Last updated: {lastUpdated.toLocaleTimeString()}
+          Live | Last updated: {lastUpdated.toLocaleTimeString()}
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* --- TOP SECTION: GRAPHS AND TABLES --- */}
       <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', marginTop: '15px' }}>
-        
-        {/* Disk Graph */}
         <div style={{ flex: 2, background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center' }}>
           <div style={{ width: '250px', height: '200px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} stroke="none">
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
+                  {chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                 </Pie>
                 <Tooltip formatter={(value) => formatBytes(value)} />
                 <Legend verticalAlign="bottom" height={36}/>
@@ -118,10 +121,8 @@ export default function StorageMonitor() {
           </div>
         </div>
 
-        {/* Inode Usage Card */}
         <div style={{ flex: 1, background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
           <h3 style={{ marginTop: 0 }}>Inode Usage</h3>
-          <p style={{ fontSize: '0.9rem', color: '#666' }}>Total file/folder capacity</p>
           <div style={{ width: '100%', background: '#e0e0e0', borderRadius: '10px', height: '15px', overflow: 'hidden', marginTop: '10px' }}>
             <div style={{ width: `${inodePercent}%`, background: '#17a2b8', height: '100%' }}></div>
           </div>
@@ -131,20 +132,13 @@ export default function StorageMonitor() {
         </div>
       </div>
 
-      {/* Table */}
-      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: '30px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
             <tr>
               <th style={{ padding: '12px 15px' }}>Name (File / Folder)</th>
               <th style={{ padding: '12px 15px' }}>Path</th>
-              
-              {/* CLICKABLE SORT HEADER */}
-              <th 
-                style={{ padding: '12px 15px', cursor: 'pointer', color: '#0066cc', userSelect: 'none' }}
-                onClick={() => setSortAsc(!sortAsc)}
-                title="Click to toggle sort order"
-              >
+              <th style={{ padding: '12px 15px', cursor: 'pointer', color: '#0066cc' }} onClick={() => setSortAsc(!sortAsc)}>
                 Size {sortAsc ? '↑ (Smallest)' : '↓ (Largest)'}
               </th>
             </tr>
@@ -165,6 +159,16 @@ export default function StorageMonitor() {
           </tbody>
         </table>
       </div>
+
+      {/* --- BOTTOM SECTION: RAW TERMINAL EVIDENCE --- */}
+      <h2 style={{ color: '#333', borderBottom: '2px solid #ccc', paddingBottom: '10px' }}>Terminal Evidence (Live)</h2>
+      <p style={{ color: '#666', marginBottom: '20px' }}>These are the raw outputs from the Linux shell running on your Render backend.</p>
+
+      <TerminalWindow title="df -h" output={rawData.dfH} />
+      <TerminalWindow title="df -i" output={rawData.dfI} />
+      <TerminalWindow title="du -sh /opt/render/project/src/*" output={rawData.duSh} />
+      <TerminalWindow title="du -ah /opt/render/project/src | sort -rh | head -n 15" output={rawData.duSort} />
+      <TerminalWindow title="find /opt/render/project/src -type f -size +10M -exec ls -lh {} +" output={rawData.findLarge} />
 
       <div style={{ marginTop: '20px', padding: '10px', background: '#e9ecef', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#555' }}>
         <div>Logged in to Capstone as: <strong>{user.username}</strong> ({user.role})</div>

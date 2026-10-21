@@ -175,6 +175,28 @@ app.get('/api/system/storage', verifyToken, requireRole(['admin']), (req, res) =
         }
     });
 });
+// Helper for asynchronous exec
+const execPromise = (cmd) => new Promise((resolve) => {
+    exec(cmd, (error, stdout) => resolve(stdout || ''));
+});
+
+// --- RAW TERMINAL COMMANDS ROUTE ---
+app.get('/api/system/raw-storage', verifyToken, requireRole(['admin']), async (req, res) => {
+    try {
+        // Render's project path
+        const appPath = '/opt/render/project/src';
+
+        const dfH = await execPromise('df -h');
+        const dfI = await execPromise('df -i');
+        const duSh = await execPromise(`du -sh ${appPath}/* 2>/dev/null`);
+        const duSort = await execPromise(`du -ah ${appPath} 2>/dev/null | sort -rh | head -n 15`);
+        const findLarge = await execPromise(`find ${appPath} -type f -size +10M -exec ls -lh {} + 2>/dev/null`);
+
+        res.json({ dfH, dfI, duSh, duSort, findLarge });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to execute terminal commands' });
+    }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
