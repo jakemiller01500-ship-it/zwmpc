@@ -108,19 +108,21 @@ app.get('/api/branches', verifyToken, (req, res) => {
     });
 });
 
-// --- ADVANCED ADMIN SYSTEM STORAGE MONITOR ---
+// --- ADVANCED ADMIN SYSTEM STORAGE MONITOR (WITH INODES & FOLDERS) ---
 app.get('/api/system/storage', verifyToken, requireRole(['admin']), (req, res) => {
-    // 1. Get Total, Used, and Free space in bytes
+    // 1. Get Disk Space (Total, Used, Free)
     const dfCmd = `df -B1 / | tail -1 | awk '{print $2, $3, $4}'`;
     
-    // 2. Get the size of just your application files in bytes
+    // 2. Get App Size (Bytes)
     const duCmd = `du -sb /opt/render/project/src 2>/dev/null | awk '{print $1}'`;
     
-    // 3. Get top 20 largest files: Size (bytes) | Path | Date Modified
-    const findCmd = `find /opt/render/project/src -type f -printf '%s|%p|%TY-%Tm-%Td %TH:%TM\\n' 2>/dev/null | sort -rn | head -n 20`;
+    // 3. Get Inode Usage (Total, Used, Free)
+    const inodeCmd = `df -i / | tail -1 | awk '{print $1, $2, $3}'`;
+    
+    // 4. Get Top 20 Largest Files AND Folders (excluding the root 'src' folder itself)
+    const findCmd = `du -ab /opt/render/project/src 2>/dev/null | sort -rn | head -n 21 | tail -n +2`;
 
-    // Run all commands
-    exec(`${dfCmd} && echo "---SEP---" && ${duCmd} && echo "---SEP---" && ${findCmd}`, (error, stdout, stderr) => {
+    exec(`${dfCmd} && echo "---SEP---" && ${duCmd} && echo "---SEP---" && ${inodeCmd} && echo "---SEP---" && ${findCmd}`, (error, stdout) => {
         if (error) {
             console.error(`Exec error: ${error}`);
             return res.status(500).json({ error: 'Failed to execute system commands' });
@@ -137,19 +139,31 @@ app.get('/api/system/storage', verifyToken, requireRole(['admin']), (req, res) =
 
             // Parse App Size
             const appBytes = parseInt(parts[1].trim()) || 0;
-            const otherUsedBytes = usedBytes - appBytes;
+            const otherUsedBytes = Math.max(0, usedBytes - appBytes);
 
-            // Parse File List
-            const fileLines = parts[2].trim().split('\n').filter(line => line);
+            // Parse Inodes
+            const inodeStats = parts[2].trim().split(' ');
+            const inodeTotal = parseInt(inodeStats[0]) || 0;
+            const inodeUsed = parseInt(inodeStats[1]) || 0;
+            const inodeFree = parseInt(inodeStats[2]) || 0;
+
+            // Parse File/Folder List
+            const fileLines = parts[3].trim().split('\n').filter(line => line);
             const files = fileLines.map(line => {
-                const [size, fullPath, modified] = line.split('|');
-                // Clean up the path so it looks like the screenshot (e.g. "backups/file.sql")
+                const tabIndex = line.indexOf('\t');
+                const size = parseInt(line.substring(0, tabIndex));
+                const fullPath = line.substring(tabIndex + 1);
                 const shortPath = fullPath.replace('/opt/render/project/src/', '');
-                return { size: parseInt(size), path: shortPath, modified };
+                // Check if it's likely a folder (no dot in the last segment)
+                const pathParts = shortPath.split('/');
+                const isFolder = !pathParts[pathParts.length - 1].includes('.');
+                
+                return { size, path: shortPath, isFolder };
             });
 
             res.json({
                 disk: { totalBytes, usedBytes, freeBytes },
+                inodes: { total: inodeTotal, used: inodeUsed, free: inodeFree },
                 appSize: appBytes,
                 otherUsed: otherUsedBytes,
                 files
