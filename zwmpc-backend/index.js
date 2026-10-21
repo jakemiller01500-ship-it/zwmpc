@@ -108,33 +108,57 @@ app.get('/api/branches', verifyToken, (req, res) => {
     });
 });
 
-// --- ADMIN SYSTEM STORAGE MONITOR ---
+// --- ADVANCED ADMIN SYSTEM STORAGE MONITOR ---
 app.get('/api/system/storage', verifyToken, requireRole(['admin']), (req, res) => {
-    // We combine the commands into one string to run them sequentially
-    const command = `
-        echo "---DISK_USAGE---"
-        df -h /
-        echo "---INODE_USAGE---"
-        df -i /
-        echo "---LARGEST_FILES---"
-        # This finds the top 20 largest files/directories in the Render project folder
-        du -ah /opt/render/project/src 2>/dev/null | sort -rh | head -n 20
-    `;
+    // 1. Get Total, Used, and Free space in bytes
+    const dfCmd = `df -B1 / | tail -1 | awk '{print $2, $3, $4}'`;
+    
+    // 2. Get the size of just your application files in bytes
+    const duCmd = `du -sb /opt/render/project/src 2>/dev/null | awk '{print $1}'`;
+    
+    // 3. Get top 20 largest files: Size (bytes) | Path | Date Modified
+    const findCmd = `find /opt/render/project/src -type f -printf '%s|%p|%TY-%Tm-%Td %TH:%TM\\n' 2>/dev/null | sort -rn | head -n 20`;
 
-    exec(command, (error, stdout, stderr) => {
+    // Run all commands
+    exec(`${dfCmd} && echo "---SEP---" && ${duCmd} && echo "---SEP---" && ${findCmd}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Exec error: ${error}`);
             return res.status(500).json({ error: 'Failed to execute system commands' });
         }
 
-        // Split the output by our custom markers
-        const parts = stdout.split('---');
-        
-        const disk = parts[1] ? parts[1].replace('DISK_USAGE---\n', '').trim() : '';
-        const inodes = parts[2] ? parts[2].replace('INODE_USAGE---\n', '').trim() : '';
-        const files = parts[3] ? parts[3].replace('LARGEST_FILES---\n', '').trim() : '';
+        try {
+            const parts = stdout.split('---SEP---\n');
+            
+            // Parse Disk Stats
+            const diskStats = parts[0].trim().split(' ');
+            const totalBytes = parseInt(diskStats[0]) || 0;
+            const usedBytes = parseInt(diskStats[1]) || 0;
+            const freeBytes = parseInt(diskStats[2]) || 0;
 
-        res.json({ disk, inodes, files });
+            // Parse App Size
+            const appBytes = parseInt(parts[1].trim()) || 0;
+            const otherUsedBytes = usedBytes - appBytes;
+
+            // Parse File List
+            const fileLines = parts[2].trim().split('\n').filter(line => line);
+            const files = fileLines.map(line => {
+                const [size, fullPath, modified] = line.split('|');
+                // Clean up the path so it looks like the screenshot (e.g. "backups/file.sql")
+                const shortPath = fullPath.replace('/opt/render/project/src/', '');
+                return { size: parseInt(size), path: shortPath, modified };
+            });
+
+            res.json({
+                disk: { totalBytes, usedBytes, freeBytes },
+                appSize: appBytes,
+                otherUsed: otherUsedBytes,
+                files
+            });
+
+        } catch (err) {
+            console.error("Parse error:", err);
+            res.status(500).json({ error: 'Failed to parse system data' });
+        }
     });
 });
 

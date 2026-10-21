@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function StorageMonitor() {
-  const [data, setData] = useState({ disk: '', inodes: '', files: '' });
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user'));
   const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -25,87 +27,107 @@ export default function StorageMonitor() {
     fetchStorage();
   }, [API_URL, token]);
 
-  // Parse the `df -h /` output to calculate the percentage for the graph
-  let usedPercent = 0;
-  let diskStats = { size: '0', used: '0', avail: '0' };
-
-  if (data.disk) {
-    const lines = data.disk.split('\n');
-    if (lines.length > 1) {
-      // Split by whitespace. Line 2 looks like: overlay 50G 15G 36G 30% /
-      const stats = lines[1].split(/\s+/); 
-      if (stats.length >= 5) {
-        diskStats = { size: stats[1], used: stats[2], avail: stats[3] };
-        usedPercent = parseInt(stats[4].replace('%', ''));
-      }
-    }
-  }
-
-  // Determine warning color
-  const getProgressColor = (percent) => {
-    if (percent > 85) return '#ff4d4f'; // Red
-    if (percent > 70) return '#faad14'; // Yellow
-    return '#52c41a'; // Green
+  // Helper to format bytes into readable GB/MB
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  if (loading) return <h2>Running Linux commands on Render...</h2>;
+  if (loading) return <h2>Running Linux commands on Render... (If server is asleep, this takes 50s)</h2>;
   if (error) return <h2 style={{ color: 'red' }}>{error}</h2>;
+  if (!data) return <h2>No data</h2>;
+
+  // Calculate Percentages
+  const usedPercent = ((data.disk.usedBytes / data.disk.totalBytes) * 100).toFixed(1);
+  const appPercent = ((data.appSize / data.disk.totalBytes) * 100).toFixed(1);
+
+  // Data for the Donut Chart
+  const chartData = [
+    { name: 'Application files', value: data.appSize, color: '#0066cc' }, // Blue
+    { name: 'Other used', value: data.otherUsed, color: '#f5a623' }, // Orange
+    { name: 'Free', value: data.disk.freeBytes, color: '#e0e0e0' } // Gray
+  ];
+
+  // Warning Level Logic
+  let statusText = 'NORMAL';
+  let statusColor = 'green';
+  if (usedPercent > 85) { statusText = 'CRITICAL'; statusColor = 'red'; }
+  else if (usedPercent > 70) { statusText = 'WARNING'; statusColor = 'orange'; }
 
   return (
-    <div>
-      <h1>System Storage Monitor</h1>
-      <p style={{ color: '#666' }}>Live telemetry from the Render Backend Container</p>
-
-      {/* GRAPH SECTION */}
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h3>Disk Utilization Graph</h3>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-          <span>Used: {diskStats.used} / {diskStats.size}</span>
-          <span style={{ fontWeight: 'bold', color: getProgressColor(usedPercent) }}>
-            {usedPercent}% Used
-          </span>
-        </div>
-        {/* The Graph (Progress Bar) */}
-        <div style={{ width: '100%', background: '#e0e0e0', borderRadius: '10px', height: '25px', overflow: 'hidden' }}>
-          <div style={{ 
-            width: `${usedPercent}%`, 
-            background: getProgressColor(usedPercent), 
-            height: '100%', 
-            transition: 'width 0.5s ease-in-out' 
-          }}></div>
-        </div>
-        <p style={{ marginTop: '10px', fontSize: '0.9em' }}>Available Space: {diskStats.avail}</p>
+    <div style={{ fontFamily: 'sans-serif' }}>
+      
+      {/* Top Header Bar */}
+      <div style={{ background: '#0b1f3a', color: 'white', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div><strong>Capstone Admin Console</strong> | Storage Monitor</div>
+        <div>Signed in as: <strong>{user.username}</strong></div>
       </div>
 
-      {/* TABLES SECTION */}
-      <div style={{ display: 'flex', gap: '20px' }}>
+      <h2 style={{ color: '#333' }}>Server storage and stored files</h2>
+
+      {/* Chart Card */}
+      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
         
-        {/* Inodes Table */}
-        <div style={{ flex: 1, background: 'white', padding: '20px', borderRadius: '8px' }}>
-          <h3>Inode Usage</h3>
-          <p style={{ fontSize: '0.9em', color: '#666' }}>Shows how many files the server can hold.</p>
-          <pre style={{ background: '#f4f4f4', padding: '10px', overflowX: 'auto' }}>
-            {data.inodes}
-          </pre>
+        <div style={{ width: '300px', height: '200px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} stroke="none">
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => formatBytes(value)} />
+              <Legend verticalAlign="bottom" height={36}/>
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Raw Disk Table */}
-        <div style={{ flex: 1, background: 'white', padding: '20px', borderRadius: '8px' }}>
-          <h3>Raw Disk Output (`df -h`)</h3>
-          <pre style={{ background: '#f4f4f4', padding: '10px', overflowX: 'auto' }}>
-            {data.disk}
-          </pre>
+        <div style={{ marginLeft: '40px', fontSize: '1.2rem' }}>
+          <p>
+            <strong>{formatBytes(data.disk.usedBytes)}</strong> of <strong>{formatBytes(data.disk.totalBytes)}</strong> used ({usedPercent}%) - 
+            <span style={{ color: statusColor, fontWeight: 'bold', marginLeft: '5px' }}>{statusText}</span>. 
+            <br/> Application files: <strong>{formatBytes(data.appSize)}</strong> ({appPercent}%)
+          </p>
         </div>
       </div>
 
-      {/* Largest Files Table */}
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
-        <h3>Top 20 Largest Files & Directories</h3>
-        <p style={{ fontSize: '0.9em', color: '#666' }}>Sorted by size (du -ah | sort -rh)</p>
-        <pre style={{ background: '#f4f4f4', padding: '10px', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
-          {data.files}
-        </pre>
+      {/* Table Card */}
+      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+            <tr>
+              <th style={{ padding: '12px 15px' }}>File</th>
+              <th style={{ padding: '12px 15px' }}>Path</th>
+              <th style={{ padding: '12px 15px' }}>Size (largest first)</th>
+              <th style={{ padding: '12px 15px' }}>Modified</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.files.map((file, index) => {
+              // Split path to get just the file name
+              const fileName = file.path.split('/').pop();
+              return (
+                <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '10px 15px', color: '#0066cc' }}>{fileName}</td>
+                  <td style={{ padding: '10px 15px', color: '#555' }}>{file.path}</td>
+                  <td style={{ padding: '10px 15px' }}>{formatBytes(file.size)}</td>
+                  <td style={{ padding: '10px 15px', color: '#555' }}>{file.modified}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: '20px', padding: '10px', background: '#e9ecef', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#555' }}>
+        <div>Logged in to Capstone as: <strong>{user.username}</strong> ({user.role})</div>
+        <div>{new Date().toLocaleString()}</div>
+      </div>
+
     </div>
   );
 }
