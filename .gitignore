@@ -1,0 +1,6 @@
+node_modules/
+zwmpc-backend/node_modules/
+zwmpc-frontend/node_modules/
+zwmpc-backend/.env
+zwmpc-frontend/.env
+.env
