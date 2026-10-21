@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useNavigate, Outlet, Link } from 'react-router-dom'; // Combined into one import
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -31,17 +31,25 @@ export default function Dashboard() {
         <p>User: {user.username}</p>
         <p>Role: <strong>{user.role.toUpperCase()}</strong></p>
         <hr />
+        
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-  <a href="/dashboard" style={{ color: 'white' }}>Home</a>
-  <a href="/dashboard/branches" style={{ color: 'white' }}>Branch Management</a>
-  
-  {/* ONLY ADMINS SEE THIS LINK */}
-  {user.role === 'admin' && (
-    <a href="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold' }}>
-      🖥️ System Storage Monitor
-    </a>
-  )}
-</nav>
+          {/* Changed to <Link> and added textDecoration: 'none' so it doesn't look like a blue link */}
+          <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>
+            Home
+          </Link>
+          
+          <Link to="/dashboard/branches" style={{ color: 'white', textDecoration: 'none' }}>
+            Branch Management
+          </Link>
+          
+          {/* ONLY ADMINS SEE THIS LINK */}
+          {user.role === 'admin' && (
+            <Link to="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold', textDecoration: 'none' }}>
+              🖥️ System Storage Monitor
+            </Link>
+          )}
+        </nav>
+
         <button 
           onClick={handleLogout} 
           style={{ marginTop: '30px', padding: '10px', width: '100%', cursor: 'pointer' }}>
