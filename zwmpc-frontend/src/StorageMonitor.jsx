@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom'; // Added for the "Go Back" button
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -9,14 +10,20 @@ export default function StorageMonitor() {
   const [error, setError] = useState('');
   const [sortAsc, setSortAsc] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-
+  
+  const navigate = useNavigate(); // Hook for navigation
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user'));
   const API_URL = import.meta.env.VITE_API_URL;
 
   const fetchStorage = useCallback(async () => {
+    // If no token or user, kick out
+    if (!token || !user) {
+      navigate('/');
+      return;
+    }
+
     try {
-      // Fetch both JSON data (for graphs) and Raw data (for terminal)
       const [resData, resRaw] = await Promise.all([
         axios.get(`${API_URL}/api/system/storage`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_URL}/api/system/raw-storage`, { headers: { Authorization: `Bearer ${token}` } })
@@ -26,21 +33,35 @@ export default function StorageMonitor() {
       setLastUpdated(new Date());
       setError('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch system data');
+      // Check if the backend returned a 403 Forbidden
+      if (err.response && err.response.status === 403) {
+        setError('Access Denied: You do not have administrator privileges.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to fetch system data');
+      }
     } finally {
       setLoading(false);
     }
-  }, [API_URL, token]);
+  }, [API_URL, token, user, navigate]);
 
   useEffect(() => {
+    // Early exit if the local storage says they are not an admin
+    if (user && user.role !== 'admin') {
+      setLoading(false);
+      return;
+    }
+
     let timeoutId;
     const fetchData = async () => {
       await fetchStorage();
-      timeoutId = setTimeout(fetchData, 60000);
+      // Only auto-refresh if there is no error and user is admin
+      if (user?.role === 'admin') {
+        timeoutId = setTimeout(fetchData, 60000);
+      }
     };
     fetchData();
     return () => clearTimeout(timeoutId);
-  }, [fetchStorage]);
+  }, [fetchStorage, user]);
 
   const formatBytes = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -52,10 +73,34 @@ export default function StorageMonitor() {
 
   const sortedFiles = data ? [...data.files].sort((a, b) => sortAsc ? a.size - b.size : b.size - a.size) : [];
 
+  // --- ACCESS DENIED SCREEN ---
+  // If the user is not an admin (checked locally) OR if the backend threw a 403 error
+  if ((user && user.role !== 'admin') || error.includes('Access Denied') || error.includes('Forbidden')) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ background: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '500px' }}>
+          <h1 style={{ color: '#d32f2f', fontSize: '2.5rem', margin: '0 0 10px 0' }}>🛑 Access Denied</h1>
+          <h3 style={{ color: '#333', marginBottom: '20px' }}>403 Forbidden</h3>
+          <p style={{ color: '#666', lineHeight: '1.6', marginBottom: '30px' }}>
+            You do not have the required administrator permissions to view the Server Storage Monitor. This attempt has been logged.
+          </p>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            style={{ padding: '12px 24px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- OTHER ERROR HANDLING ---
   if (loading && !data) return <h2>Running Linux commands on Render... (If server is asleep, this takes 50s)</h2>;
-  if (error) return <h2 style={{ color: 'red' }}>{error}</h2>;
+  if (error) return <h2 style={{ color: 'red', textAlign: 'center', marginTop: '50px' }}>{error}</h2>;
   if (!data || !rawData) return <h2>No data</h2>;
 
+  // --- ADMIN DASHBOARD RENDERING ---
   const usedPercent = ((data.disk.usedBytes / data.disk.totalBytes) * 100).toFixed(1);
   const appPercent = ((data.appSize / data.disk.totalBytes) * 100).toFixed(1);
   const inodePercent = ((data.inodes.used / data.inodes.total) * 100).toFixed(1);
@@ -71,25 +116,11 @@ export default function StorageMonitor() {
   if (usedPercent > 85) { statusText = 'CRITICAL'; statusColor = 'red'; }
   else if (usedPercent > 70) { statusText = 'WARNING'; statusColor = 'orange'; }
 
-  // Reusable Terminal Window Component
-    // Reusable Terminal Window Component
-    // Reusable Terminal Window Component
   const TerminalWindow = ({ command, output }) => (
     <div style={{ marginBottom: '20px', background: '#0d0d0d', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
-      <pre style={{ 
-          color: '#d4d4d4', 
-          padding: '15px', 
-          margin: 0, 
-          fontFamily: 'monospace', 
-          fontSize: '0.85rem', 
-          lineHeight: '1.4',
-          textAlign: 'left', // Ensures text is not centered
-          whiteSpace: 'pre-wrap'
-      }}>
-        {/* Green Command Line */}
+      <pre style={{ color: '#d4d4d4', padding: '15px', margin: 0, fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.4', textAlign: 'left', whiteSpace: 'pre-wrap' }}>
         <span style={{ color: '#4af626' }}>$ {command}</span>
         {"\n"}
-        {/* Standard Output */}
         {output || 'No output'}
       </pre>
     </div>
@@ -97,20 +128,17 @@ export default function StorageMonitor() {
 
   return (
     <div style={{ fontFamily: 'sans-serif' }}>
-      
       <div style={{ background: '#0b1f3a', color: 'white', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div><strong>Capstone Admin Console</strong> | Storage Monitor</div>
         <div>Signed in as: <strong>{user.username}</strong></div>
       </div>
-
+      
+      {/* ... (Keep all the rest of the rendering code exactly the same as before) ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ color: '#333', margin: 0 }}>Server storage and stored files</h2>
-        <div style={{ fontSize: '0.9rem', color: '#666' }}>
-          Live | Last updated: {lastUpdated.toLocaleTimeString()}
-        </div>
+        <div style={{ fontSize: '0.9rem', color: '#666' }}>Live | Last updated: {lastUpdated.toLocaleTimeString()}</div>
       </div>
 
-      {/* --- TOP SECTION: GRAPHS AND TABLES --- */}
       <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', marginTop: '15px' }}>
         <div style={{ flex: 2, background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center' }}>
           <div style={{ width: '250px', height: '200px' }}>
@@ -172,7 +200,6 @@ export default function StorageMonitor() {
         </table>
       </div>
 
-            {/* --- BOTTOM SECTION: RAW TERMINAL EVIDENCE --- */}
       <h2 style={{ color: '#333', borderBottom: '2px solid #ccc', paddingBottom: '10px' }}>Terminal Evidence (Live)</h2>
       <p style={{ color: '#666', marginBottom: '20px' }}>These are the raw outputs from the Linux shell running on your Render backend.</p>
 
