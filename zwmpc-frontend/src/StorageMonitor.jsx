@@ -72,10 +72,11 @@ export default function StorageMonitor() {
   else if (usedPercent > 70) { statusText = 'WARNING'; statusColor = 'orange'; }
 
   // Reusable Terminal Window Component
+    // Reusable Terminal Window Component
   const TerminalWindow = ({ title, output }) => (
     <div style={{ marginBottom: '20px' }}>
       <div style={{ background: '#1e1e1e', color: '#4af626', padding: '8px 15px', borderTopLeftRadius: '8px', borderTopRightRadius: '8px', fontFamily: 'monospace', borderBottom: '1px solid #333' }}>
-        student@capstone-vps:~$ {title}
+        {title}
       </div>
       <pre style={{ background: '#0d0d0d', color: '#d4d4d4', padding: '15px', margin: 0, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', overflowX: 'auto', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.4' }}>
         {output || 'No output'}
