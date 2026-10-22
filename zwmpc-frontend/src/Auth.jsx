@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,27 +8,12 @@ export default function Auth() {
     username: '', 
     email: '', 
     password: '',
-    role: 'staff', // Default role
-    branch_id: '' 
+    role: 'staff' // Default role
   });
-  const [branches, setBranches] = useState([]);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
   
   const API_URL = import.meta.env.VITE_API_URL;
-
-  // Fetch branches on load so the dropdown has data
-  useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/public/branches`);
-        setBranches(res.data);
-      } catch (error) {
-        console.error("Failed to load branches", error);
-      }
-    };
-    if (!isLogin) fetchBranches(); // Only fetch when showing registration form
-  }, [isLogin, API_URL]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -44,8 +29,9 @@ export default function Auth() {
         localStorage.setItem('user', JSON.stringify(response.data.user)); 
         navigate('/dashboard'); 
       } else {
-        setMessage('Registration successful! Please login.');
-        setIsLogin(true);
+        setMessage('Registration successful! Please wait for Admin approval before logging in.');
+        setIsLogin(true); // Switch back to login screen
+        setFormData({ username: '', email: '', password: '', role: 'staff' }); // Clear form
       }
     } catch (error) {
       setMessage(error.response?.data?.message || error.response?.data?.error || 'An error occurred');
@@ -55,33 +41,70 @@ export default function Auth() {
   return (
     <div style={{ maxWidth: '400px', margin: '50px auto', fontFamily: 'Arial' }}>
       <h2>{isLogin ? 'Login to ZWMPC' : 'Register Account'}</h2>
-      {message && <p style={{ color: message.includes('failed') ? 'red' : 'blue' }}>{message}</p>}
+      
+      {/* Message block - Red for errors/pending, Blue for success */}
+      {message && (
+        <p style={{ color: message.includes('successful') ? 'blue' : 'red', fontWeight: 'bold' }}>
+          {message}
+        </p>
+      )}
       
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {!isLogin && (
-          <input type="text" name="username" placeholder="Username" onChange={handleChange} required />
+          <input 
+            type="text" 
+            name="username" 
+            placeholder="Username" 
+            onChange={handleChange} 
+            value={formData.username}
+            required 
+          />
         )}
-        <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
-        <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
         
-        {/* ROLE AND BRANCH SELECTION (ONLY FOR REGISTRATION) */}
+        <input 
+          type="email" 
+          name="email" 
+          placeholder="Email" 
+          onChange={handleChange} 
+          value={formData.email}
+          required 
+        />
+        
+        <input 
+          type="password" 
+          name="password" 
+          placeholder="Password" 
+          onChange={handleChange} 
+          value={formData.password}
+          required 
+        />
+        
+        {/* ROLE SELECTION (ONLY FOR REGISTRATION) */}
         {!isLogin && (
           <>
             <label style={{ fontSize: '0.9rem', marginBottom: '-10px' }}>Select System Role:</label>
-            <select name="role" value={formData.role} onChange={handleChange} required style={{ padding: '8px' }}>
+            <select 
+              name="role" 
+              value={formData.role} 
+              onChange={handleChange} 
+              required 
+              style={{ padding: '8px' }}
+            >
               <option value="staff">Staff</option>
               <option value="admin">Branch Admin</option>
-              <option value="super_admin">Super Admin (System Owner)</option>
             </select>
           </>
         )}
         
-        <button type="submit" style={{ padding: '10px', cursor: 'pointer' }}>
-          {isLogin ? 'Login' : 'Register'}
+        <button type="submit" style={{ padding: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
+          {isLogin ? 'Login' : 'Register Request'}
         </button>
       </form>
 
-      <p onClick={() => { setIsLogin(!isLogin); setMessage(''); }} style={{ cursor: 'pointer', color: 'blue', marginTop: '15px' }}>
+      <p 
+        onClick={() => { setIsLogin(!isLogin); setMessage(''); }} 
+        style={{ cursor: 'pointer', color: 'blue', marginTop: '15px', textAlign: 'center' }}
+      >
         {isLogin ? "Don't have an account? Register here." : "Already have an account? Login here."}
       </p>
     </div>
