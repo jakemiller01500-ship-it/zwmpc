@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Outlet, Link } from 'react-router-dom'; // Combined into one import
+import { useNavigate, Outlet, Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -33,17 +33,24 @@ export default function Dashboard() {
         <hr />
         
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {/* Changed to <Link> and added textDecoration: 'none' so it doesn't look like a blue link */}
-          <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>
-            Home
-          </Link>
+          <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Home</Link>
           
-          <Link to="/dashboard/branches" style={{ color: 'white', textDecoration: 'none' }}>
-            Branch Management
-          </Link>
+          {/* Super Admins and Admins can manage users */}
+          {(user.role === 'super_admin' || user.role === 'admin') && (
+            <Link to="/dashboard/users" style={{ color: 'white', textDecoration: 'none' }}>
+              User Management
+            </Link>
+          )}
+
+          {/* Super Admins and Admins can manage branches */}
+          {(user.role === 'super_admin' || user.role === 'admin') && (
+            <Link to="/dashboard/branches" style={{ color: 'white', textDecoration: 'none' }}>
+              Branch Management
+            </Link>
+          )}
           
-          {/* ONLY ADMINS SEE THIS LINK */}
-          {user.role === 'admin' && (
+          {/* ONLY SUPER ADMINS SEE THE SYSTEM STORAGE MONITOR */}
+          {user.role === 'super_admin' && (
             <Link to="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold', textDecoration: 'none' }}>
               🖥️ System Storage Monitor
             </Link>
@@ -58,7 +65,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, padding: '30px', background: '#f4f4f9' }}>
+      <div style={{ flex: 1, padding: '30px', background: '#f4f4f9', overflowY: 'auto' }}>
         <Outlet /> {/* This is where the child routes will render */}
       </div>
     </div>

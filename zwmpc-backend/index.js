@@ -23,48 +23,39 @@ const db = mysql.createPool({
     ssl: { rejectUnauthorized: false } // Required for Aiven
 });
 
-// --- REGISTRATION ROUTE ---
+// --- UPDATED REGISTRATION (Pending Approval) ---
 app.post('/api/register', async (req, res) => {
-    const { username, email, password } = req.body;
-    try {
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const sql = 'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)';
-        db.query(sql, [username, email, hashedPassword], (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.status(201).json({ message: 'User registered successfully!' });
+    const { username, email, password, role } = req.body; 
+    
+    // Super Admin check (still enforce only one)
+    if (role === 'super_admin') {
+        db.query('SELECT id FROM users WHERE role = "super_admin"', async (err, results) => {
+            if (results.length > 0) return res.status(400).json({ message: 'A Super Admin already exists.' });
+            proceed();
         });
-    } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+    } else { proceed(); }
+
+    async function proceed() {
+        db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
+            if (results.length > 0) return res.status(400).json({ message: 'Email already in use' });
+
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            // Notice: is_approved is set to FALSE by default, branch_id is NULL
+            const sql = 'INSERT INTO users (username, email, password_hash, role, is_approved) VALUES (?, ?, ?, ?, FALSE)';
+            db.query(sql, [username, email, hashedPassword, role], (err, result) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.status(201).json({ message: 'Registration successful! Please wait for Admin approval.' });
+            });
+        });
     }
 });
 
-// --- LOGIN ROUTE ---
+// --- UPDATED LOGIN (Check Approval) ---
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
-    const sql = 'SELECT * FROM users WHERE email = ?';
     
-    db.query(sql, [email], async (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (results.length === 0) return res.status(404).json({ message: 'User not found' });
-
-        const user = results[0];
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
-
-        // Generate Token
-        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
-    });
-});
-
-// ... [Keep all your existing imports and db setup] ...
-const { verifyToken, requireRole } = require('./middleware'); // ADD THIS
-
-// Update your LOGIN route to include branch_id in the token!
-app.post('/api/login', (req, res) => {
-    const { email, password } = req.body;
     db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         if (results.length === 0) return res.status(404).json({ message: 'User not found' });
@@ -73,21 +64,68 @@ app.post('/api/login', (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        // Include branch_id and role in the token
-        const token = jwt.sign(
-            { id: user.id, role: user.role, branch_id: user.branch_id }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '1d' }
-        );
-        
-        res.json({ 
-            token, 
-            user: { id: user.id, username: user.username, role: user.role, branch_id: user.branch_id } 
-        });
+        // CHECK APPROVAL STATUS
+        if (!user.is_approved) {
+            return res.status(403).json({ message: 'Account pending approval. Please contact your administrator.' });
+        }
+
+        const token = jwt.sign({ id: user.id, role: user.role, branch_id: user.branch_id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        res.json({ token, user: { id: user.id, username: user.username, role: user.role, branch_id: user.branch_id } });
+    });
+});
+
+// --- GET PENDING USERS (For Super Admin & Admin) ---
+app.get('/api/users/pending', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+    let sql = 'SELECT id, username, email, role, created_at FROM users WHERE is_approved = FALSE';
+    let params = [];
+
+    // If an Admin logs in, only show pending users (they haven't been assigned a branch yet by SA)
+    if (req.user.role === 'admin') {
+        // In this logic, admins see users who requested to be staff, but we'll let Super Admin assign the branch
+        // For simplicity, admins see all unapproved users too, but Super Admin is the only one who can assign branches.
+        // You can customize this to filter by branch if you add "requested_branch_id" to registration.
+    }
+
+    db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// --- APPROVE/REJECT USER ---
+app.post('/api/users/approve', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+    const { user_id, branch_id } = req.body;
+    
+    let sql = 'UPDATE users SET is_approved = TRUE, branch_id = ? WHERE id = ?';
+    
+    // Super Admin can assign a branch. Admin can only approve users for their OWN branch.
+    if (req.user.role === 'admin') {
+        sql = 'UPDATE users SET is_approved = TRUE, branch_id = ? WHERE id = ?';
+        branch_id = req.user.branch_id; // Force the Admin's branch ID
+    }
+
+    db.query(sql, [branch_id || null, user_id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'User approved successfully.' });
+    });
+});
+
+app.delete('/api/users/reject/:id', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+    const sql = 'DELETE FROM users WHERE id = ? AND is_approved = FALSE';
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'User request rejected and deleted.' });
     });
 });
 
 // --- BRANCH MANAGEMENT ROUTES ---
+// --- PUBLIC ROUTE TO FETCH BRANCHES FOR REGISTRATION ---
+app.get('/api/public/branches', (req, res) => {
+    db.query('SELECT id, branch_name FROM branches', (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
 
 // Create a Branch (Only Admins)
 app.post('/api/branches', verifyToken, requireRole(['admin']), (req, res) => {
