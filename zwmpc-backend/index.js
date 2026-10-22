@@ -9,8 +9,13 @@ const { verifyToken, requireRole } = require('./middleware');
 require('dotenv').config();
 
 const app = express();
+// Allow both the main production URL and any Vercel preview URL
 app.use(cors({
-    origin: 'https://zwmpc.vercel.app' 
+    origin: [
+        'https://zwmpc.vercel.app', // Your main production URL
+        /\.vercel\.app$/            // Allows ANY url ending in .vercel.app (for previews)
+    ],
+    credentials: true
 }));
 app.use(express.json());
 
