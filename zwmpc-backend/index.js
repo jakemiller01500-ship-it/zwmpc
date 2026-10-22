@@ -4,6 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { exec } = require('child_process');
+const { verifyToken, requireRole } = require('./middleware');
 
 require('dotenv').config();
 
