@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom'; // Added for the "Go Back" button
+import { useNavigate } from 'react-router-dom'; 
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -11,13 +11,12 @@ export default function StorageMonitor() {
   const [sortAsc, setSortAsc] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate(); 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user'));
   const API_URL = import.meta.env.VITE_API_URL;
 
   const fetchStorage = useCallback(async () => {
-    // If no token or user, kick out
     if (!token || !user) {
       navigate('/');
       return;
@@ -33,7 +32,6 @@ export default function StorageMonitor() {
       setLastUpdated(new Date());
       setError('');
     } catch (err) {
-      // Check if the backend returned a 403 Forbidden
       if (err.response && err.response.status === 403) {
         setError('Access Denied: You do not have administrator privileges.');
       } else {
@@ -45,8 +43,8 @@ export default function StorageMonitor() {
   }, [API_URL, token, user, navigate]);
 
   useEffect(() => {
-    // Early exit if the local storage says they are not an admin
-    if (user && user.role !== 'admin') {
+    // FIX 1: Allow both 'admin' and 'super_admin'
+    if (user && user.role !== 'admin' && user.role !== 'super_admin') {
       setLoading(false);
       return;
     }
@@ -54,8 +52,8 @@ export default function StorageMonitor() {
     let timeoutId;
     const fetchData = async () => {
       await fetchStorage();
-      // Only auto-refresh if there is no error and user is admin
-      if (user?.role === 'admin') {
+      // FIX 2: Allow auto-refresh for both 'admin' and 'super_admin'
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
         timeoutId = setTimeout(fetchData, 60000);
       }
     };
@@ -74,8 +72,8 @@ export default function StorageMonitor() {
   const sortedFiles = data ? [...data.files].sort((a, b) => sortAsc ? a.size - b.size : b.size - a.size) : [];
 
   // --- ACCESS DENIED SCREEN ---
-  // If the user is not an admin (checked locally) OR if the backend threw a 403 error
-  if ((user && user.role !== 'admin') || error.includes('Access Denied') || error.includes('Forbidden')) {
+  // FIX 3: Allow both 'admin' and 'super_admin' to bypass this block
+  if ((user && user.role !== 'admin' && user.role !== 'super_admin') || error.includes('Access Denied') || error.includes('Forbidden')) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ background: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '500px' }}>
@@ -133,7 +131,6 @@ export default function StorageMonitor() {
         <div>Signed in as: <strong>{user.username}</strong></div>
       </div>
       
-      {/* ... (Keep all the rest of the rendering code exactly the same as before) ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ color: '#333', margin: 0 }}>Server storage and stored files</h2>
         <div style={{ fontSize: '0.9rem', color: '#666' }}>Live | Last updated: {lastUpdated.toLocaleTimeString()}</div>
