@@ -49,12 +49,10 @@ export default function Dashboard() {
             </Link>
           )}
           
-          {/* ONLY SUPER ADMINS SEE THE SYSTEM STORAGE MONITOR */}
-          {user.role === 'super_admin' && (
-            <Link to="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold', textDecoration: 'none' }}>
-              🖥️ System Storage Monitor
-            </Link>
-          )}
+          {/* Storage Monitor Link - Now visible to everyone to test the 403 Forbidden screen */}
+          <Link to="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold', textDecoration: 'none' }}>
+            🖥️ System Storage Monitor
+          </Link>
         </nav>
 
         <button 
