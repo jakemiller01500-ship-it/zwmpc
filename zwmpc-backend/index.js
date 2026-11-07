@@ -229,5 +229,69 @@ app.get('/api/system/raw-storage', verifyToken, requireRole(['super_admin', 'adm
     }
 });
 
+// ==========================================
+// WEEK 3: PRODUCT & INVENTORY MANAGEMENT
+// ==========================================
+
+// Get Products (Super Admin sees all, Admin sees only their branch)
+app.get('/api/products', verifyToken, async (req, res) => {
+    let sql = `
+        SELECT p.*, b.branch_name 
+        FROM products p 
+        JOIN branches b ON p.branch_id = b.id
+    `;
+    let params = [];
+
+    // If the user is an Admin, restrict them to their assigned branch
+    if (req.user.role === 'admin') {
+        sql += ' WHERE p.branch_id = ?';
+        params.push(req.user.branch_id);
+    } else if (req.user.role === 'staff') {
+        // Staff can only see products for their branch
+        sql += ' WHERE p.branch_id = ?';
+        params.push(req.user.branch_id);
+    }
+    
+    sql += ' ORDER BY p.created_at DESC';
+
+    db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Add a New Product (Super Admin and Admin only)
+app.post('/api/products', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+    const { name, sku, category, price, stock_quantity } = req.body;
+    
+    // Super Admin can select a branch. Admin is forced to their own branch.
+    const branch_id = req.user.role === 'super_admin' ? req.body.branch_id : req.user.branch_id;
+
+    if (!branch_id) {
+        return res.status(400).json({ message: 'Branch ID is required.' });
+    }
+
+    const sql = 'INSERT INTO products (branch_id, name, sku, category, price, stock_quantity) VALUES (?, ?, ?, ?, ?, ?)';
+    db.query(sql, [branch_id, name, sku, category, price, stock_quantity], (err, result) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'SKU already exists' });
+            return res.status(500).json({ error: err.message });
+        }
+        res.status(201).json({ message: 'Product added successfully!', productId: result.insertId });
+    });
+});
+
+// Update Stock Quantity (Admins and Staff can do this)
+app.put('/api/products/:id/stock', verifyToken, (req, res) => {
+    const { stock_quantity } = req.body;
+    const productId = req.params.id;
+
+    const sql = 'UPDATE products SET stock_quantity = ? WHERE id = ?';
+    db.query(sql, [stock_quantity, productId], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Stock updated successfully.' });
+    });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

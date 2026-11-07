@@ -7,6 +7,7 @@ import UserManagement from './UserManagement';
 import SuperAdminHome from './SuperAdminHome';
 import AdminHome from './AdminHome';
 import StaffHome from './StaffHome';
+import Products from './Products'; 
 
 function App() {
   const storedUser = localStorage.getItem('user');
@@ -28,6 +29,7 @@ function App() {
           <Route path="branches" element={<Branches />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="storage" element={<StorageMonitor />} />
+          <Route path="products" element={<Products />} />
         </Route>
       </Routes>
     </BrowserRouter>

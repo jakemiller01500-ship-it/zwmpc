@@ -53,6 +53,10 @@ export default function Dashboard() {
           <Link to="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold', textDecoration: 'none' }}>
             🖥️ System Storage Monitor
           </Link>
+          {/* Everyone can see Products */}
+          <Link to="/dashboard/products" style={{ color: 'white', textDecoration: 'none' }}>
+            📦 Product & Inventory
+          </Link>
         </nav>
 
         <button 
