@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LandingPage from './LandingPage'; // <-- Changed from Auth
-import Dashboard from './dashboard';
+import Dashboard from './Dashboard';
 import Branches from './Branches';
 import StorageMonitor from './StorageMonitor';
 import UserManagement from './UserManagement';
