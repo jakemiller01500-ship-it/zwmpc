@@ -133,7 +133,7 @@ app.get('/api/public/branches', (req, res) => {
 // --- BRANCH MANAGEMENT ROUTES ---
 
 // Create a Branch (Super Admin & Admin)
-app.post('/api/branches', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+app.post('/api/branches', verifyToken, requireRole(['super_admin']), (req, res) => {
     const { branch_name, location } = req.body;
     const sql = 'INSERT INTO branches (branch_name, location) VALUES (?, ?)';
     

@@ -42,46 +42,56 @@ export default function Branches() {
     <div>
       <h1>Branch Management</h1>
       
-      {/* Only show the form if the user is an Admin */}
-      {user.role === 'admin' && (
-        <div style={{ background: 'white', padding: '20px', marginBottom: '20px', borderRadius: '8px' }}>
+      {/* FIXED: ONLY Super Admin can see the Add Branch form */}
+      {user.role === 'super_admin' && (
+        <div style={{ background: 'white', padding: '20px', marginBottom: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
           <h3>Add New Branch</h3>
-          {message && <p style={{ color: 'blue' }}>{message}</p>}
+          {message && <p style={{ color: message.includes('success') ? 'green' : 'red' }}>{message}</p>}
           <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
             <input 
               type="text" placeholder="Branch Name" required
               value={formData.branch_name} 
               onChange={(e) => setFormData({...formData, branch_name: e.target.value})} 
+              style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', flex: 1 }}
             />
             <input 
               type="text" placeholder="Location" required
               value={formData.location} 
               onChange={(e) => setFormData({...formData, location: e.target.value})} 
+              style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', flex: 1 }}
             />
-            <button type="submit">Add Branch</button>
+            <button type="submit" style={{ padding: '10px 20px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+              Add Branch
+            </button>
           </form>
         </div>
       )}
 
       {/* List of Branches */}
-      <table style={{ width: '100%', background: 'white', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ background: '#ddd', textAlign: 'left' }}>
-            <th style={{ padding: '10px' }}>ID</th>
-            <th style={{ padding: '10px' }}>Branch Name</th>
-            <th style={{ padding: '10px' }}>Location</th>
-          </tr>
-        </thead>
-        <tbody>
-          {branches.map(b => (
-            <tr key={b.id} style={{ borderBottom: '1px solid #ccc' }}>
-              <td style={{ padding: '10px' }}>{b.id}</td>
-              <td style={{ padding: '10px' }}>{b.branch_name}</td>
-              <td style={{ padding: '10px' }}>{b.location}</td>
+      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+            <tr>
+              <th style={{ padding: '15px' }}>ID</th>
+              <th style={{ padding: '15px' }}>Branch Name</th>
+              <th style={{ padding: '15px' }}>Location</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {branches.length === 0 ? (
+              <tr><td colSpan="3" style={{ padding: '20px', textAlign: 'center' }}>No branches found.</td></tr>
+            ) : (
+              branches.map(b => (
+                <tr key={b.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '15px' }}>{b.id}</td>
+                  <td style={{ padding: '15px', fontWeight: 'bold' }}>{b.branch_name}</td>
+                  <td style={{ padding: '15px' }}>{b.location}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
