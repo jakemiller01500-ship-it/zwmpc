@@ -57,6 +57,10 @@ export default function Dashboard() {
           <Link to="/dashboard/products" style={{ color: 'white', textDecoration: 'none' }}>
             📦 Product & Inventory
           </Link>
+          {/* Everyone can process transactions */}
+          <Link to="/dashboard/transactions" style={{ color: 'white', textDecoration: 'none' }}>
+            🛒 Merchandising Transactions
+          </Link>
         </nav>
 
         <button 

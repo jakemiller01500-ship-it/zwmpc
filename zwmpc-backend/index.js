@@ -293,5 +293,93 @@ app.put('/api/products/:id/stock', verifyToken, (req, res) => {
     });
 });
 
+// ==========================================
+// WEEK 4: MERCHANDISING TRANSACTIONS
+// ==========================================
+
+// Get Transaction History
+app.get('/api/transactions', verifyToken, (req, res) => {
+    let sql = `
+        SELECT t.*, p.name AS product_name, u.username AS cashier_name, b.branch_name
+        FROM transactions t
+        JOIN products p ON t.product_id = p.id
+        JOIN users u ON t.user_id = u.id
+        JOIN branches b ON t.branch_id = b.id
+    `;
+    let params = [];
+
+    // Filter by branch if not Super Admin
+    if (req.user.role !== 'super_admin') {
+        sql += ' WHERE t.branch_id = ?';
+        params.push(req.user.branch_id);
+    }
+    sql += ' ORDER BY t.created_at DESC';
+
+    db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Process a New Transaction (Sale or Restock)
+app.post('/api/transactions', verifyToken, requireRole(['super_admin', 'admin', 'staff']), (req, res) => {
+    const { product_id, quantity, transaction_type } = req.body;
+    const user_id = req.user.id;
+    const branch_id = req.user.branch_id; // Staff/Admin are locked to their branch
+
+    // Super admin processing for a specific branch would need branch_id in req.body, 
+    // but for simplicity, let's assume Super Admin uses the app like a staff member for now.
+
+    if (!branch_id) return res.status(400).json({ message: 'User is not assigned to a branch.' });
+
+    // 1. Get the current product price and stock
+    db.query('SELECT price, stock_quantity FROM products WHERE id = ? AND branch_id = ?', [product_id, branch_id], (err, productResults) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (productResults.length === 0) return res.status(404).json({ message: 'Product not found in this branch.' });
+
+        const product = productResults[0];
+        let newStock = product.stock_quantity;
+        let total_price = 0;
+
+        // 2. Calculate new stock and total price
+        if (transaction_type === 'SALE') {
+            if (product.stock_quantity < quantity) {
+                return res.status(400).json({ message: 'Insufficient stock for this sale.' });
+            }
+            newStock -= quantity;
+            total_price = product.price * quantity;
+        } else if (transaction_type === 'RESTOCK') {
+            newStock += quantity;
+            total_price = product.price * quantity; // Cost of restocking
+        }
+
+        // 3. Use SQL Transaction (Atomic operation) to update stock and insert record
+        db.beginTransaction((err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Update Product Stock
+            db.query('UPDATE products SET stock_quantity = ? WHERE id = ?', [newStock, product_id], (err) => {
+                if (err) {
+                    return db.rollback(() => res.status(500).json({ error: err.message }));
+                }
+
+                // Insert Transaction Record
+                const insertSql = 'INSERT INTO transactions (branch_id, product_id, user_id, quantity, transaction_type, total_price) VALUES (?, ?, ?, ?, ?, ?)';
+                db.query(insertSql, [branch_id, product_id, user_id, quantity, transaction_type, total_price], (err) => {
+                    if (err) {
+                        return db.rollback(() => res.status(500).json({ error: err.message }));
+                    }
+                    
+                    // Commit both changes to the database
+                    db.commit((err) => {
+                        if (err) return db.rollback(() => res.status(500).json({ error: err.message }));
+                        res.status(201).json({ message: 'Transaction processed successfully!' });
+                    });
+                });
+            });
+        });
+    });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

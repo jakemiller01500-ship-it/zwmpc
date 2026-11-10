@@ -8,6 +8,7 @@ import SuperAdminHome from './SuperAdminHome';
 import AdminHome from './AdminHome';
 import StaffHome from './StaffHome';
 import Products from './Products'; 
+import Transactions from './Transactions';
 
 function App() {
   const storedUser = localStorage.getItem('user');
@@ -30,6 +31,7 @@ function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="storage" element={<StorageMonitor />} />
           <Route path="products" element={<Products />} />
+          <Route path="transactions" element={<Transactions />} />
         </Route>
       </Routes>
     </BrowserRouter>
