@@ -381,5 +381,84 @@ app.post('/api/transactions', verifyToken, requireRole(['super_admin', 'admin', 
     });
 });
 
+// ==========================================
+// WEEK 5: DASHBOARD ANALYTICS & REPORTS
+// ==========================================
+
+// 1. Get Dashboard Summary Stats
+app.get('/api/dashboard/stats', verifyToken, (req, res) => {
+    const branchFilter = req.user.role === 'super_admin' ? '' : ' AND branch_id = ?';
+    const params = req.user.role === 'super_admin' ? [] : [req.user.branch_id];
+
+    const statsSql = `
+        SELECT 
+            (SELECT COUNT(*) FROM products WHERE 1=1 ${branchFilter}) AS total_products,
+            (SELECT COUNT(*) FROM products WHERE stock_quantity <= 10 ${branchFilter}) AS low_stock_count,
+            (SELECT IFNULL(SUM(total_price), 0) FROM transactions WHERE transaction_type = 'SALE' AND DATE(created_at) = CURDATE() ${branchFilter}) AS todays_sales,
+            (SELECT COUNT(*) FROM transactions WHERE DATE(created_at) = CURDATE() ${branchFilter}) AS todays_transactions
+    `;
+
+    db.query(statsSql, [...params, ...params, ...params, ...params], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results[0]);
+    });
+});
+
+// 2. Get Analytics for Charts
+app.get('/api/dashboard/analytics', verifyToken, (req, res) => {
+    const branchFilter = req.user.role === 'super_admin' ? '' : ' AND t.branch_id = ?';
+    const params = req.user.role === 'super_admin' ? [] : [req.user.branch_id];
+
+    // Top 5 Selling Products
+    const topProductsSql = `
+        SELECT p.name, SUM(t.quantity) as total_sold 
+        FROM transactions t JOIN products p ON t.product_id = p.id 
+        WHERE t.transaction_type = 'SALE' ${branchFilter}
+        GROUP BY p.id ORDER BY total_sold DESC LIMIT 5
+    `;
+
+    // Sales Trend (Last 7 Days)
+    const salesTrendSql = `
+        SELECT DATE(created_at) as date, SUM(total_price) as revenue 
+        FROM transactions 
+        WHERE transaction_type = 'SALE' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ${branchFilter}
+        GROUP BY DATE(created_at) ORDER BY date ASC
+    `;
+
+    db.query(topProductsSql, params, (err, topProducts) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        db.query(salesTrendSql, params, (err, salesTrend) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ topProducts, salesTrend });
+        });
+    });
+});
+
+// 3. Get Filtered Reports
+app.get('/api/reports/transactions', verifyToken, (req, res) => {
+    const { startDate, endDate } = req.query;
+    let sql = `
+        SELECT t.*, p.name AS product_name, u.username AS cashier_name, b.branch_name
+        FROM transactions t
+        JOIN products p ON t.product_id = p.id
+        JOIN users u ON t.user_id = u.id
+        JOIN branches b ON t.branch_id = b.id
+        WHERE t.created_at BETWEEN ? AND ?
+    `;
+    let params = [`${startDate} 00:00:00`, `${endDate} 23:59:59`];
+
+    if (req.user.role !== 'super_admin') {
+        sql += ' AND t.branch_id = ?';
+        params.push(req.user.branch_id);
+    }
+    sql += ' ORDER BY t.created_at DESC';
+
+    db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
