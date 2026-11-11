@@ -4,7 +4,7 @@ import axios from 'axios';
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [selectedBranches, setSelectedBranches] = useState({}); // Track branch selection per user
+  const [selectedBranches, setSelectedBranches] = useState({}); 
 
   const token = localStorage.getItem('token');
   const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -14,7 +14,7 @@ export default function UserManagement() {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const [resUsers, resBranches] = await Promise.all([
-        axios.get(`${API_URL}/api/users/all`, config), // Fetching ALL users now
+        axios.get(`${API_URL}/api/users/all`, config),
         axios.get(`${API_URL}/api/branches`, config)
       ]);
       setUsers(resUsers.data);
@@ -30,7 +30,7 @@ export default function UserManagement() {
         { user_id: id, branch_id: selectedBranches[id] }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchData(); // Refresh list
+      fetchData();
     } catch (err) { alert('Error approving user'); }
   };
 
@@ -56,8 +56,9 @@ export default function UserManagement() {
     <div>
       <h2>User Management</h2>
       
-      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      {/* ADDED: overflowX: 'auto' so you can scroll right if the table is too wide */}
+      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
             <tr>
               <th style={{ padding: '15px' }}>Username</th>
@@ -87,10 +88,10 @@ export default function UserManagement() {
                           defaultValue=""
                           style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
-                          <option value="">-- Assign Branch --</option>
+                          <option value="">-- Assign --</option>
                           {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
                         </select>
-                      ) : 'Pending Assignment'
+                      ) : 'Pending'
                     )}
                   </td>
 
@@ -108,7 +109,6 @@ export default function UserManagement() {
                   {/* Actions Column */}
                   <td style={{ padding: '15px', display: 'flex', gap: '10px' }}>
                     
-                    {/* Approve/Reject Buttons (Only for Pending Users) */}
                     {!u.is_approved && (
                       <>
                         <button onClick={() => handleApprove(u.id)} style={{ background: '#4caf50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
@@ -116,8 +116,8 @@ export default function UserManagement() {
                       </>
                     )}
 
-                    {/* Delete Button (For Super Admin ONLY, and cannot delete themselves) */}
-                    {currentUser.role === 'super_admin' && currentUser.id !== u.id && (
+                    {/* Delete Button Logic */}
+                    {currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
                       <button onClick={() => handleDelete(u.id)} style={{ background: '#d32f2f', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         Delete
                       </button>
