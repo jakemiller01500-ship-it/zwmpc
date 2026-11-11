@@ -1,110 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
-export default function Reports() {
-  const [transactions, setTransactions] = useState([]);
-  const [dates, setDates] = useState({ start: '', end: '' });
-  const [loading, setLoading] = useState(false);
-
+export default function DashboardHome() {
+  const [stats, setStats] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  
   const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user'));
   const API_URL = import.meta.env.VITE_API_URL;
 
-  const fetchReport = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_URL}/api/reports/transactions?startDate=${dates.start}&endDate=${dates.end}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTransactions(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const [resStats, resAnalytics] = await Promise.all([
+          axios.get(`${API_URL}/api/dashboard/stats`, config),
+          axios.get(`${API_URL}/api/dashboard/analytics`, config)
+        ]);
+        setStats(resStats.data);
+        setAnalytics(resAnalytics.data);
+      } catch (err) { console.error(err); }
+    };
+    fetchData();
+  }, [API_URL, token]);
 
-  const downloadCSV = () => {
-    if (transactions.length === 0) return alert('No data to export');
-    
-    const headers = ['Date', 'Branch', 'Product', 'Type', 'Qty', 'Total Price', 'Cashier'];
-    const rows = transactions.map(t => [
-      new Date(t.created_at).toLocaleDateString(),
-      t.branch_name,
-      t.product_name,
-      t.transaction_type,
-      t.quantity,
-      t.total_price,
-      t.cashier_name
-    ]);
-
-    let csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `sales_report_${dates.start}_to_${dates.end}.csv`);
-    document.body.appendChild(link);
-    link.click();
-  };
+  if (!stats || !analytics) return <h2>Loading Analytics...</h2>;
 
   return (
     <div>
-      <h2>Sales & Inventory Reports</h2>
-      
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <form onSubmit={fetchReport} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Start Date</label>
-            <input type="date" required value={dates.start} onChange={(e) => setDates({...dates, start: e.target.value})} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>End Date</label>
-            <input type="date" required value={dates.end} onChange={(e) => setDates({...dates, end: e.target.value})} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
-          </div>
-          <button type="submit" style={{ padding: '10px 20px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-            {loading ? 'Loading...' : 'Generate Report'}
-          </button>
-          
-          {transactions.length > 0 && (
-            <button type="button" onClick={downloadCSV} style={{ padding: '10px 20px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', marginLeft: 'auto' }}>
-              Download CSV
-            </button>
-          )}
-        </form>
+      <h1 style={{ marginBottom: '5px' }}>Welcome, {user.username}</h1>
+      <p style={{ color: '#666', marginBottom: '20px' }}>
+        {user.role === 'super_admin' ? 'System-Wide Overview' : 'Branch Overview'}
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>Today's Sales</h3>
+          <h1 style={styles.cardValue}>₱{parseFloat(stats.todays_sales).toFixed(2)}</h1>
+        </div>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>Today's Transactions</h3>
+          <h1 style={styles.cardValue}>{stats.todays_transactions}</h1>
+        </div>
+        <div style={styles.card}>
+          <h3 style={styles.cardTitle}>Total Products</h3>
+          <h1 style={styles.cardValue}>{stats.total_products}</h1>
+        </div>
+        <div style={{ ...styles.card, background: stats.low_stock_count > 0 ? '#ffebee' : 'white' }}>
+          <h3 style={{...styles.cardTitle, color: stats.low_stock_count > 0 ? '#d32f2f' : '#666'}}>Low Stock Alerts</h3>
+          <h1 style={{...styles.cardValue, color: stats.low_stock_count > 0 ? '#d32f2f' : '#333'}}>{stats.low_stock_count}</h1>
+        </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
-            <tr>
-              <th style={{ padding: '15px' }}>Date</th>
-              <th style={{ padding: '15px' }}>Branch</th>
-              <th style={{ padding: '15px' }}>Product</th>
-              <th style={{ padding: '15px' }}>Type</th>
-              <th style={{ padding: '15px' }}>Qty</th>
-              <th style={{ padding: '15px' }}>Total</th>
-              <th style={{ padding: '15px' }}>Cashier</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.length === 0 ? (
-              <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>No transactions found for this date range.</td></tr>
-            ) : (
-              transactions.map(t => (
-                <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '15px' }}>{new Date(t.created_at).toLocaleDateString()}</td>
-                  <td style={{ padding: '15px' }}>{t.branch_name}</td>
-                  <td style={{ padding: '15px' }}>{t.product_name}</td>
-                  <td style={{ padding: '15px', fontWeight: 'bold', color: t.transaction_type === 'SALE' ? '#d32f2f' : '#2e7d32' }}>{t.transaction_type}</td>
-                  <td style={{ padding: '15px' }}>{t.quantity}</td>
-                  <td style={{ padding: '15px' }}>₱{parseFloat(t.total_price).toFixed(2)}</td>
-                  <td style={{ padding: '15px' }}>{t.cashier_name}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div style={styles.chartCard}>
+          <h3>Revenue Trend (Last 7 Days)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={analytics.salesTrend}>
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip formatter={(value) => `₱${value}`} />
+              <Line type="monotone" dataKey="revenue" stroke="#0066cc" strokeWidth={3} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={styles.chartCard}>
+          <h3>Top 5 Best-Selling Products</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={analytics.topProducts}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="total_sold" fill="#4caf50" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
 }
+
+const styles = {
+  card: { background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
+  cardTitle: { margin: '0 0 10px 0', fontSize: '1rem', color: '#666' },
+  cardValue: { margin: 0, fontSize: '2rem', color: '#333' },
+  chartCard: { background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }
+};
