@@ -122,6 +122,49 @@ app.delete('/api/users/reject/:id', verifyToken, requireRole(['super_admin', 'ad
     });
 });
 
+// ==========================================
+// USER MANAGEMENT (GET ALL & DELETE)
+// ==========================================
+
+// 1. Get ALL users (Super Admin sees everyone, Admin sees their branch)
+app.get('/api/users/all', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+    let sql = `
+        SELECT u.id, u.username, u.email, u.role, u.is_approved, u.created_at, b.branch_name
+        FROM users u
+        LEFT JOIN branches b ON u.branch_id = b.id
+    `;
+    let params = [];
+
+    // If an Admin logs in, they only see users from their branch
+    if (req.user.role === 'admin') {
+        sql += ' WHERE u.branch_id = ?';
+        params.push(req.user.branch_id);
+    }
+    
+    sql += ' ORDER BY u.is_approved ASC, u.created_at DESC'; // Pending users show first
+
+    db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// 2. Delete a user (ONLY Super Admin can do this)
+app.delete('/api/users/:id', verifyToken, requireRole(['super_admin']), (req, res) => {
+    const userIdToDelete = req.params.id;
+
+    // Safety check: Prevent Super Admin from deleting their own account
+    if (parseInt(userIdToDelete) === req.user.id) {
+        return res.status(400).json({ message: 'You cannot delete your own Super Admin account.' });
+    }
+
+    const sql = 'DELETE FROM users WHERE id = ?';
+    db.query(sql, [userIdToDelete], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'User deleted successfully.' });
+    });
+});
+
 // --- PUBLIC ROUTE TO FETCH BRANCHES FOR REGISTRATION ---
 app.get('/api/public/branches', (req, res) => {
     db.query('SELECT id, branch_name FROM branches', (err, results) => {
