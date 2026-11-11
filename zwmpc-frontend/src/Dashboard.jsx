@@ -10,7 +10,7 @@ export default function Dashboard() {
     const storedUser = localStorage.getItem('user');
     
     if (!token) {
-      navigate('/'); // Kick out if no token
+      navigate('/'); 
     } else {
       setUser(JSON.parse(storedUser));
     }
@@ -27,48 +27,40 @@ export default function Dashboard() {
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial' }}>
       {/* Sidebar */}
       <div style={{ width: '250px', background: '#333', color: 'white', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-        <h2>ZWMPC System</h2>
-        <p>User: {user.username}</p>
-        <p>Role: <strong>{user.role.toUpperCase()}</strong></p>
-        <hr style={{ borderColor: '#555', width: '100%' }} />
+        <h2 style={{ marginTop: 0 }}>ZWMPC System</h2>
+        <p style={{ margin: '5px 0' }}>User: {user.username}</p>
+        <p style={{ margin: '5px 0' }}>Role: <strong>{user.role.toUpperCase()}</strong></p>
+        <hr style={{ borderColor: '#555', width: '100%', margin: '15px 0' }} />
         
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-          
-          {/* FIXED: Added an icon to the Home link */}
-          <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '15px', flex: 1 }}>
+          <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
             🏠 Home
           </Link>
           
-          {/* Super Admins and Admins can manage users */}
           {(user.role === 'super_admin' || user.role === 'admin') && (
             <Link to="/dashboard/users" style={{ color: 'white', textDecoration: 'none' }}>
               👥 User Management
             </Link>
           )}
 
-          {/* Super Admins and Admins can manage branches */}
           {(user.role === 'super_admin' || user.role === 'admin') && (
             <Link to="/dashboard/branches" style={{ color: 'white', textDecoration: 'none' }}>
               🏢 Branch Management
             </Link>
           )}
           
-          {/* Storage Monitor Link */}
-          <Link to="/dashboard/storage" style={{ color: '#4dabf7', fontWeight: 'bold', textDecoration: 'none' }}>
+          <Link to="/dashboard/storage" style={{ color: '#4dabf7', textDecoration: 'none' }}>
             🖥️ System Storage Monitor
           </Link>
           
-          {/* Everyone can see Products */}
           <Link to="/dashboard/products" style={{ color: 'white', textDecoration: 'none' }}>
             📦 Product & Inventory
           </Link>
           
-          {/* Everyone can process transactions */}
           <Link to="/dashboard/transactions" style={{ color: 'white', textDecoration: 'none' }}>
             🛒 Merchandising Transactions
           </Link>
           
-          {/* Reports (Super Admin and Admin) */}
           {(user.role === 'super_admin' || user.role === 'admin') && (
             <Link to="/dashboard/reports" style={{ color: 'white', textDecoration: 'none' }}>
               📊 Sales & Reports
@@ -85,7 +77,7 @@ export default function Dashboard() {
 
       {/* Main Content Area */}
       <div style={{ flex: 1, padding: '30px', background: '#f4f4f9', overflowY: 'auto' }}>
-        <Outlet /> {/* This is where the child routes will render */}
+        <Outlet /> 
       </div>
     </div>
   );
