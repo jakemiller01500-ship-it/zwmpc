@@ -61,6 +61,12 @@ export default function Dashboard() {
           <Link to="/dashboard/transactions" style={{ color: 'white', textDecoration: 'none' }}>
             🛒 Merchandising Transactions
           </Link>
+          {/* Reports (Super Admin and Admin) */}
+          {(user.role === 'super_admin' || user.role === 'admin') && (
+          <Link to="/dashboard/reports" style={{ color: 'white', textDecoration: 'none' }}>
+            📊 Sales & Reports
+          </Link>
+          )}
         </nav>
 
         <button 

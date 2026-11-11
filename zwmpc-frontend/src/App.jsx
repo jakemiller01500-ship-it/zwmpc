@@ -1,37 +1,30 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import LandingPage from './LandingPage'; // <-- Changed from Auth
+import LandingPage from './LandingPage';
 import Dashboard from './Dashboard';
 import Branches from './Branches';
 import StorageMonitor from './StorageMonitor';
 import UserManagement from './UserManagement';
-import SuperAdminHome from './SuperAdminHome';
-import AdminHome from './AdminHome';
-import StaffHome from './StaffHome';
-import Products from './Products'; 
+import Products from './Products';
 import Transactions from './Transactions';
+import DashboardHome from './DashboardHome'; // NEW
+import Reports from './Reports'; // NEW
 
 function App() {
-  const storedUser = localStorage.getItem('user');
-  const user = storedUser ? JSON.parse(storedUser) : null;
-
   return (
     <BrowserRouter>
       <Routes>
-        {/* Change this route to use LandingPage */}
-        <Route path="/" element={<LandingPage />} /> 
-        
+        <Route path="/" element={<LandingPage />} />
         <Route path="/dashboard" element={<Dashboard />}>
-          <Route index element={
-            !user ? <div>Loading...</div> :
-            user.role === 'super_admin' ? <SuperAdminHome /> :
-            user.role === 'admin' ? <AdminHome /> : 
-            <StaffHome />
-          } />
+          
+          {/* Use the dynamic DashboardHome for all roles */}
+          <Route index element={<DashboardHome />} />
+          
           <Route path="branches" element={<Branches />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="storage" element={<StorageMonitor />} />
           <Route path="products" element={<Products />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="reports" element={<Reports />} /> {/* NEW */}
         </Route>
       </Routes>
     </BrowserRouter>

@@ -99,9 +99,13 @@ export default function Products() {
                   <td style={styles.td}>{product.category}</td>
                   <td style={styles.td}>₱{parseFloat(product.price).toFixed(2)}</td>
                   <td style={styles.td}>
-                    <strong style={{ color: product.stock_quantity > 10 ? 'green' : 'red' }}>
-                      {product.stock_quantity}
-                    </strong>
+                    {product.stock_quantity <= 10 ? (
+                      <span style={{ background: '#ffcccc', color: '#d32f2f', padding: '5px 10px', borderRadius: '5px', fontWeight: 'bold' }}>
+                        ⚠️ {product.stock_quantity} (Low)
+                      </span>
+                    ) : (
+                      <strong style={{ color: 'green' }}>{product.stock_quantity}</strong>
+                    )}
                   </td>
                   <td style={styles.td}>{product.branch_name}</td>
                 </tr>
