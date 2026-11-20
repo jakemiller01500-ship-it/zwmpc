@@ -92,7 +92,17 @@ app.post('/api/login', (req, res) => {
         // 4. LOG THE SUCCESSFUL LOGIN
         logAction(user.id, 'LOGIN', `User ${user.username} logged in.`);
 
-        res.json({ token, user: { id: user.id, username: user.username, role: user.role, branch_id: user.branch_id } });
+        res.json({ 
+            token, 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                role: user.role, 
+                branch_id: user.branch_id,
+                contact_number: user.contact_number, // Added
+                profile_picture: user.profile_picture // Added
+            } 
+        });
     });
 });
 
