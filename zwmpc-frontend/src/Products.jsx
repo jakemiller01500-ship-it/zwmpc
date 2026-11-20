@@ -13,7 +13,6 @@ export default function Products() {
   const user = JSON.parse(localStorage.getItem('user'));
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Fetch Products and Branches (if Super Admin)
   const fetchData = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -23,9 +22,7 @@ export default function Products() {
       ]);
       setProducts(resProducts.data);
       setBranches(resBranches.data);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -39,30 +36,20 @@ export default function Products() {
       await axios.post(`${API_URL}/api/products`, formData, config);
       setMessage('Product added successfully!');
       setFormData({ name: '', sku: '', category: 'General', price: '', stock_quantity: 0, branch_id: '' });
-      fetchData(); // Refresh table
+      setTimeout(() => setMessage(''), 3000);
+      fetchData(); 
     } catch (error) {
       setMessage(error.response?.data?.message || 'Error adding product');
     }
   };
 
-  // --- EXPORT INVENTORY TO CSV ---
   const downloadCSV = () => {
     if (products.length === 0) return alert('No products to export');
-    
     const headers = ['Branch', 'Product Name', 'SKU', 'Category', 'Price', 'Stock Quantity'];
-    const rows = products.map(p => [
-      p.branch_name,
-      p.name,
-      p.sku,
-      p.category,
-      p.price,
-      p.stock_quantity
-    ]);
-
+    const rows = products.map(p => [p.branch_name, p.name, p.sku, p.category, p.price, p.stock_quantity]);
     let csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", encodeURI(csvContent));
     link.setAttribute("download", `inventory_report_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -70,50 +57,69 @@ export default function Products() {
 
   return (
     <div>
-      <h2 className="page-title">Product & Inventory Management</h2>
+      <h2 className="page-title">Product & Inventory</h2>
 
-      {/* Add Product Form (Admins Only) */}
+      {/* Add Product Form */}
       {(user.role === 'super_admin' || user.role === 'admin') && (
         <div className="theme-card">
           <h3 style={{ marginTop: 0, color: 'var(--text-dark)' }}>Add New Product</h3>
           
           {message && (
-            <p style={{ 
-              color: message.includes('success') ? '#2e7d32' : '#d32f2f',
-              background: message.includes('success') ? '#e8f5e9' : '#ffebee',
-              padding: '10px', borderRadius: '5px', fontWeight: 'bold'
-            }}>
+            <p style={{ color: message.includes('success') ? '#2e7d32' : '#d32f2f', background: message.includes('success') ? '#e8f5e9' : '#ffebee', padding: '12px', borderRadius: '8px', fontWeight: 'bold' }}>
               {message}
             </p>
           )}
           
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <input type="text" name="name" placeholder="Product Name" value={formData.name} onChange={handleChange} required className="theme-input" />
-            <input type="text" name="sku" placeholder="SKU (Unique)" value={formData.sku} onChange={handleChange} required className="theme-input" />
-            <input type="text" name="category" placeholder="Category" value={formData.category} onChange={handleChange} required className="theme-input" />
-            <input type="number" step="0.01" name="price" placeholder="Price" value={formData.price} onChange={handleChange} required className="theme-input" />
-            <input type="number" name="stock_quantity" placeholder="Initial Stock" value={formData.stock_quantity} onChange={handleChange} required className="theme-input" />
+          {/* CSS Grid for beautiful spacing */}
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
             
-            {/* Super Admin must select a branch */}
+            <div>
+              <label style={styles.label}>Product Name</label>
+              <input type="text" name="name" placeholder="e.g. Fresh Milk" value={formData.name} onChange={handleChange} required className="theme-input" />
+            </div>
+
+            <div>
+              <label style={styles.label}>SKU (Unique)</label>
+              <input type="text" name="sku" placeholder="e.g. MLK-001" value={formData.sku} onChange={handleChange} required className="theme-input" />
+            </div>
+
+            <div>
+              <label style={styles.label}>Category</label>
+              <input type="text" name="category" placeholder="e.g. Dairy" value={formData.category} onChange={handleChange} required className="theme-input" />
+            </div>
+
+            <div>
+              <label style={styles.label}>Price (₱)</label>
+              <input type="number" step="0.01" name="price" placeholder="0.00" value={formData.price} onChange={handleChange} required className="theme-input" />
+            </div>
+
+            <div>
+              <label style={styles.label}>Initial Stock</label>
+              <input type="number" name="stock_quantity" placeholder="0" value={formData.stock_quantity} onChange={handleChange} required className="theme-input" />
+            </div>
+            
             {user.role === 'super_admin' && (
-              <select name="branch_id" value={formData.branch_id} onChange={handleChange} required className="theme-input">
-                <option value="">Select Branch</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-              </select>
+              <div>
+                <label style={styles.label}>Assign to Branch</label>
+                <select name="branch_id" value={formData.branch_id} onChange={handleChange} required className="theme-input">
+                  <option value="">Select Branch</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                </select>
+              </div>
             )}
 
-            <button type="submit" className="btn-primary" style={{ gridColumn: 'span 2', marginTop: '10px' }}>
-              Add Product
-            </button>
+            <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Save Product</button>
+            </div>
           </form>
         </div>
       )}
 
-      {/* Table Header with CSV Download Button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '30px' }}>
+      {/* Table Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '40px' }}>
         <h3 style={{ margin: 0, color: 'var(--text-dark)' }}>Inventory List</h3>
-        <button onClick={downloadCSV} className="btn-success">
-          Download CSV
+        <button onClick={downloadCSV} className="btn-success" style={{ padding: '10px 15px', fontSize: '0.9rem' }}>
+          Export CSV
         </button>
       </div>
 
@@ -122,17 +128,17 @@ export default function Products() {
         <table className="theme-table">
           <thead>
             <tr>
-              <th>Product Name</th>
+              <th>Product</th>
               <th>SKU</th>
               <th>Category</th>
               <th>Price</th>
-              <th>Stock</th>
+              <th>Stock Status</th>
               <th>Branch</th>
             </tr>
           </thead>
           <tbody>
             {products.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No products found.</td></tr>
+              <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No products found.</td></tr>
             ) : (
               products.map(product => (
                 <tr key={product.id}>
@@ -142,16 +148,13 @@ export default function Products() {
                   <td>₱{parseFloat(product.price).toFixed(2)}</td>
                   <td>
                     {product.stock_quantity <= 10 ? (
-                      <span style={{ 
-                        background: '#ffebee', color: '#d32f2f', 
-                        padding: '5px 10px', borderRadius: '20px', 
-                        fontWeight: 'bold', fontSize: '0.85em',
-                        border: '1px solid #ffcdd2'
-                      }}>
+                      <span style={{ background: '#ffebee', color: '#d32f2f', padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.85em', border: '1px solid #ffcdd2' }}>
                         ⚠️ {product.stock_quantity} (Low)
                       </span>
                     ) : (
-                      <strong style={{ color: '#2e7d32' }}>{product.stock_quantity}</strong>
+                      <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                        {product.stock_quantity} in stock
+                      </span>
                     )}
                   </td>
                   <td>{product.branch_name}</td>
@@ -164,3 +167,7 @@ export default function Products() {
     </div>
   );
 }
+
+const styles = {
+  label: { display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-dark)' }
+};

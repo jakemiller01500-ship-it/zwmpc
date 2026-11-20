@@ -1,90 +1,102 @@
 /* =========================================
    ZWMPC GLOBAL THEME
    ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
 :root {
-  /* Colors based on the ZWMPC Building & Landing Page */
-  --primary-pink: #f4a6b8;  /* Light pink from the building paint */
-  --dark-pink: #d81b60;     /* Deep pink for buttons/accents */
-  --bg-color: #fcf8f9;      /* Very subtle pink/off-white for background */
+  --primary-pink: #f4a6b8;  
+  --dark-pink: #d81b60;     
+  --bg-color: #fcf8f9;      
   --text-dark: #333333;
   --text-muted: #666666;
   --white: #ffffff;
   --border-color: #e0e0e0;
-  
-  /* Shadows */
   --shadow-sm: 0 2px 5px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 12px rgba(216, 27, 96, 0.15);
 }
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-dark);
 }
 
 /* =========================================
-   REUSABLE COMPONENTS
+   CARDS & CONTAINERS
    ========================================= */
-
-/* Cards (For Forms, Tables, and Content) */
 .theme-card {
   background: var(--white);
   border-radius: 12px;
-  padding: 24px;
+  padding: 30px; /* More breathing room */
   box-shadow: var(--shadow-sm);
-  margin-bottom: 24px;
+  margin-bottom: 25px;
   border: 1px solid var(--border-color);
 }
 
-/* Inputs & Form Elements */
+/* =========================================
+   FORMS & INPUTS
+   ========================================= */
 .theme-input {
   width: 100%;
-  padding: 12px;
+  padding: 12px 15px;
   border-radius: 8px;
-  border: 1px solid var(--border-color);
-  font-size: 1rem;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
   box-sizing: border-box;
   transition: all 0.3s ease;
   background: #fafafa;
+  color: var(--text-dark);
 }
 
 .theme-input:focus {
   outline: none;
   border-color: var(--dark-pink);
   background: var(--white);
-  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.1);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.15); /* Pink glow */
 }
 
-/* Buttons */
+.theme-input::placeholder {
+  color: #999;
+}
+
+/* =========================================
+   BUTTONS
+   ========================================= */
 .btn-primary, .btn-danger, .btn-success, .btn-secondary {
-  padding: 10px 20px;
+  padding: 12px 20px;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
   color: var(--white);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .btn-primary {
   background: var(--dark-pink);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 10px rgba(216, 27, 96, 0.3);
 }
-.btn-primary:hover { background: #b0154d; transform: translateY(-1px); }
+.btn-primary:hover { background: #b0154d; transform: translateY(-2px); }
 
 .btn-danger { background: #d32f2f; }
-.btn-danger:hover { background: #b71c1c; }
+.btn-danger:hover { background: #b71c1c; transform: translateY(-2px); }
 
 .btn-success { background: #2e7d32; }
-.btn-success:hover { background: #1b5e20; }
+.btn-success:hover { background: #1b5e20; transform: translateY(-2px); }
 
 .btn-secondary { background: #757575; }
 .btn-secondary:hover { background: #616161; }
 
-/* Tables */
+/* =========================================
+   TABLES
+   ========================================= */
 .theme-table-container {
   background: var(--white);
   border-radius: 12px;
@@ -100,27 +112,31 @@ body {
 }
 
 .theme-table th {
-  background: #fdf2f5; /* Very light pink header */
+  background: #fdf2f5; 
   padding: 16px;
   color: var(--dark-pink);
   font-weight: 600;
   border-bottom: 2px solid var(--primary-pink);
+  white-space: nowrap;
 }
 
 .theme-table td {
   padding: 16px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-dark);
+  vertical-align: middle;
 }
 
 .theme-table tr:hover {
   background-color: #faf5f6;
 }
 
-/* Page Titles */
+/* =========================================
+   PAGE TITLES
+   ========================================= */
 .page-title {
   color: var(--dark-pink);
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   font-size: 1.8rem;
   border-bottom: 2px solid var(--primary-pink);
   padding-bottom: 10px;
