@@ -40,27 +40,43 @@ export default function Branches() {
 
   return (
     <div>
-      <h1>Branch Management</h1>
+      <h2 className="page-title">Branch Management</h2>
       
-      {/* FIXED: ONLY Super Admin can see the Add Branch form */}
+      {/* Add Branch Form (Only Super Admin) */}
       {user.role === 'super_admin' && (
-        <div style={{ background: 'white', padding: '20px', marginBottom: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-          <h3>Add New Branch</h3>
-          {message && <p style={{ color: message.includes('success') ? 'green' : 'red' }}>{message}</p>}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+        <div className="theme-card">
+          <h3 style={{ marginTop: 0, color: 'var(--text-dark)' }}>Add New Branch</h3>
+          
+          {message && (
+            <p style={{ 
+              color: message.includes('success') ? '#2e7d32' : '#d32f2f',
+              background: message.includes('success') ? '#e8f5e9' : '#ffebee',
+              padding: '10px', borderRadius: '5px', fontWeight: 'bold'
+            }}>
+              {message}
+            </p>
+          )}
+          
+          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             <input 
-              type="text" placeholder="Branch Name" required
+              type="text" 
+              placeholder="Branch Name" 
+              required
               value={formData.branch_name} 
               onChange={(e) => setFormData({...formData, branch_name: e.target.value})} 
-              style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', flex: 1 }}
+              className="theme-input"
+              style={{ flex: 1, minWidth: '250px' }}
             />
             <input 
-              type="text" placeholder="Location" required
+              type="text" 
+              placeholder="Location" 
+              required
               value={formData.location} 
               onChange={(e) => setFormData({...formData, location: e.target.value})} 
-              style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', flex: 1 }}
+              className="theme-input"
+              style={{ flex: 1, minWidth: '250px' }}
             />
-            <button type="submit" style={{ padding: '10px 20px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+            <button type="submit" className="btn-primary" style={{ whiteSpace: 'nowrap' }}>
               Add Branch
             </button>
           </form>
@@ -68,24 +84,28 @@ export default function Branches() {
       )}
 
       {/* List of Branches */}
-      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+      <div className="theme-table-container">
+        <table className="theme-table">
+          <thead>
             <tr>
-              <th style={{ padding: '15px' }}>ID</th>
-              <th style={{ padding: '15px' }}>Branch Name</th>
-              <th style={{ padding: '15px' }}>Location</th>
+              <th style={{ width: '80px' }}>ID</th>
+              <th>Branch Name</th>
+              <th>Location</th>
             </tr>
           </thead>
           <tbody>
             {branches.length === 0 ? (
-              <tr><td colSpan="3" style={{ padding: '20px', textAlign: 'center' }}>No branches found.</td></tr>
+              <tr>
+                <td colSpan="3" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No branches found.
+                </td>
+              </tr>
             ) : (
               branches.map(b => (
-                <tr key={b.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '15px' }}>{b.id}</td>
-                  <td style={{ padding: '15px', fontWeight: 'bold' }}>{b.branch_name}</td>
-                  <td style={{ padding: '15px' }}>{b.location}</td>
+                <tr key={b.id}>
+                  <td style={{ color: 'var(--text-muted)' }}>#{b.id}</td>
+                  <td style={{ fontWeight: 'bold', color: 'var(--dark-pink)' }}>{b.branch_name}</td>
+                  <td>{b.location}</td>
                 </tr>
               ))
             )}

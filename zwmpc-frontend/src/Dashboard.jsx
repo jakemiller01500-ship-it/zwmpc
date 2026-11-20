@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Outlet, Link } from 'react-router-dom';
+import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation(); // Used to highlight the active page
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -21,68 +22,104 @@ export default function Dashboard() {
     navigate('/');
   };
 
-  if (!user) return <div>Loading...</div>;
+  if (!user) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--dark-pink)' }}>Loading System...</div>;
+
+  // Helper function to style the links and highlight the active page
+  const getLinkStyle = (path) => {
+    const isActive = location.pathname === path;
+    return {
+      color: isActive ? 'var(--dark-pink)' : 'var(--text-dark)',
+      textDecoration: 'none',
+      padding: '12px 15px',
+      borderRadius: '8px',
+      backgroundColor: isActive ? '#fdf2f5' : 'transparent',
+      fontWeight: isActive ? 'bold' : '500',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      transition: 'all 0.2s ease',
+      marginBottom: '5px',
+      borderLeft: isActive ? '4px solid var(--dark-pink)' : '4px solid transparent'
+    };
+  };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial' }}>
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
+      
       {/* Sidebar */}
-      <div style={{ width: '250px', background: '#333', color: 'white', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-        <h2 style={{ marginTop: 0 }}>ZWMPC System</h2>
-        <p style={{ margin: '5px 0' }}>User: {user.username}</p>
-        <p style={{ margin: '5px 0' }}>Role: <strong>{user.role.toUpperCase()}</strong></p>
-        <hr style={{ borderColor: '#555', width: '100%', margin: '15px 0' }} />
+      <div style={{ 
+        width: '260px', 
+        background: 'var(--white)', 
+        padding: '20px', 
+        display: 'flex', 
+        flexDirection: 'column',
+        boxShadow: '2px 0 15px rgba(0,0,0,0.05)',
+        zIndex: 10
+      }}>
         
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '15px', flex: 1 }}>
-          <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>
-            🏠 Home
-          </Link>
+        {/* User Profile Section */}
+        <div style={{ textAlign: 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
+          <div style={{ 
+            width: '65px', height: '65px', borderRadius: '50%', background: 'var(--primary-pink)', 
+            display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 12px auto',
+            color: 'white', fontSize: '1.8rem', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(244, 166, 184, 0.4)'
+          }}>
+            {user.username.charAt(0).toUpperCase()}
+          </div>
+          <h3 style={{ margin: '0 0 5px 0', color: 'var(--text-dark)', fontSize: '1.1rem' }}>{user.username}</h3>
+          <span style={{ 
+            fontSize: '0.75rem', background: '#fdf2f5', color: 'var(--dark-pink)', 
+            padding: '4px 12px', borderRadius: '12px', fontWeight: 'bold', letterSpacing: '0.5px'
+          }}>
+            {user.role.toUpperCase()}
+          </span>
+        </div>
+        
+        {/* Navigation */}
+        <nav style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '5px' }}>
+          <Link to="/dashboard" style={getLinkStyle('/dashboard')}>🏠 Home</Link>
           
           {(user.role === 'super_admin' || user.role === 'admin') && (
-            <Link to="/dashboard/users" style={{ color: 'white', textDecoration: 'none' }}>
-              👥 User Management
-            </Link>
+            <Link to="/dashboard/users" style={getLinkStyle('/dashboard/users')}>👥 User Management</Link>
           )}
 
           {(user.role === 'super_admin' || user.role === 'admin') && (
-            <Link to="/dashboard/branches" style={{ color: 'white', textDecoration: 'none' }}>
-              🏢 Branch Management
-            </Link>
+            <Link to="/dashboard/branches" style={getLinkStyle('/dashboard/branches')}>🏢 Branch Management</Link>
           )}
           
-          <Link to="/dashboard/storage" style={{ color: '#4dabf7', textDecoration: 'none' }}>
-            🖥️ System Storage Monitor
-          </Link>
-          
-          <Link to="/dashboard/products" style={{ color: 'white', textDecoration: 'none' }}>
-            📦 Product & Inventory
-          </Link>
-          
-          <Link to="/dashboard/transactions" style={{ color: 'white', textDecoration: 'none' }}>
-            🛒 Merchandising Transactions
-          </Link>
+          <Link to="/dashboard/products" style={getLinkStyle('/dashboard/products')}>📦 Product & Inventory</Link>
+          <Link to="/dashboard/transactions" style={getLinkStyle('/dashboard/transactions')}>🛒 Transactions</Link>
           
           {(user.role === 'super_admin' || user.role === 'admin') && (
-            <Link to="/dashboard/reports" style={{ color: 'white', textDecoration: 'none' }}>
-              📊 Sales & Reports
-            </Link>
+            <Link to="/dashboard/reports" style={getLinkStyle('/dashboard/reports')}>📊 Sales & Reports</Link>
           )}
-          {/* Audit Log (Super Admin Only) */}
+
+          <Link to="/dashboard/storage" style={getLinkStyle('/dashboard/storage')}>🖥️ Storage Monitor</Link>
+          
           {user.role === 'super_admin' && (
-            <Link to="/dashboard/audit" style={{ color: 'white', textDecoration: 'none' }}>
-              📜 System Audit Logs
-            </Link>
+            <Link to="/dashboard/audit" style={getLinkStyle('/dashboard/audit')}>📜 Audit Logs</Link>
           )}
         </nav>
 
+        {/* Logout Button */}
         <button 
           onClick={handleLogout} 
-          style={{ marginTop: '20px', padding: '10px', width: '100%', cursor: 'pointer', background: '#ff4d4d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
+          style={{ 
+            marginTop: '20px', padding: '12px', width: '100%', 
+            background: 'transparent', color: 'var(--dark-pink)', 
+            border: '2px solid var(--dark-pink)', borderRadius: '8px', 
+            cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => { e.target.style.background = 'var(--dark-pink)'; e.target.style.color = 'white'; }}
+          onMouseOut={(e) => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--dark-pink)'; }}
+        >
           Logout
         </button>
       </div>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, padding: '30px', background: '#f4f4f9', overflowY: 'auto' }}>
+      <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
         <Outlet /> 
       </div>
     </div>

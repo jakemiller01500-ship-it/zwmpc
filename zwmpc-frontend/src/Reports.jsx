@@ -49,56 +49,94 @@ export default function Reports() {
 
   return (
     <div>
-      <h2>Sales & Inventory Reports</h2>
+      <h2 className="page-title">Sales & Inventory Reports</h2>
       
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <form onSubmit={fetchReport} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Start Date</label>
-            <input type="date" required value={dates.start} onChange={(e) => setDates({...dates, start: e.target.value})} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+      {/* Filter Form */}
+      <div className="theme-card">
+        <form onSubmit={fetchReport} style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+              Start Date
+            </label>
+            <input 
+              type="date" 
+              required 
+              value={dates.start} 
+              onChange={(e) => setDates({...dates, start: e.target.value})} 
+              className="theme-input" 
+            />
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>End Date</label>
-            <input type="date" required value={dates.end} onChange={(e) => setDates({...dates, end: e.target.value})} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+          
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+              End Date
+            </label>
+            <input 
+              type="date" 
+              required 
+              value={dates.end} 
+              onChange={(e) => setDates({...dates, end: e.target.value})} 
+              className="theme-input" 
+            />
           </div>
-          <button type="submit" style={{ padding: '10px 20px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-            {loading ? 'Loading...' : 'Generate Report'}
+          
+          <button type="submit" className="btn-primary" style={{ height: '45px', minWidth: '150px' }}>
+            {loading ? 'Generating...' : 'Generate Report'}
           </button>
           
           {transactions.length > 0 && (
-            <button type="button" onClick={downloadCSV} style={{ padding: '10px 20px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', marginLeft: 'auto' }}>
+            <button 
+              type="button" 
+              onClick={downloadCSV} 
+              className="btn-success" 
+              style={{ height: '45px', minWidth: '150px', marginLeft: 'auto' }}
+            >
               Download CSV
             </button>
           )}
         </form>
       </div>
 
-      <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+      {/* Results Table */}
+      <div className="theme-table-container">
+        <table className="theme-table">
+          <thead>
             <tr>
-              <th style={{ padding: '15px' }}>Date</th>
-              <th style={{ padding: '15px' }}>Branch</th>
-              <th style={{ padding: '15px' }}>Product</th>
-              <th style={{ padding: '15px' }}>Type</th>
-              <th style={{ padding: '15px' }}>Qty</th>
-              <th style={{ padding: '15px' }}>Total</th>
-              <th style={{ padding: '15px' }}>Cashier</th>
+              <th>Date</th>
+              <th>Branch</th>
+              <th>Product</th>
+              <th>Type</th>
+              <th>Qty</th>
+              <th>Total</th>
+              <th>Cashier</th>
             </tr>
           </thead>
           <tbody>
             {transactions.length === 0 ? (
-              <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>No transactions found for this date range.</td></tr>
+              <tr>
+                <td colSpan="7" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No transactions found for this date range. Please select dates and generate a report.
+                </td>
+              </tr>
             ) : (
               transactions.map(t => (
-                <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '15px' }}>{new Date(t.created_at).toLocaleDateString()}</td>
-                  <td style={{ padding: '15px' }}>{t.branch_name}</td>
-                  <td style={{ padding: '15px' }}>{t.product_name}</td>
-                  <td style={{ padding: '15px', fontWeight: 'bold', color: t.transaction_type === 'SALE' ? '#d32f2f' : '#2e7d32' }}>{t.transaction_type}</td>
-                  <td style={{ padding: '15px' }}>{t.quantity}</td>
-                  <td style={{ padding: '15px' }}>₱{parseFloat(t.total_price).toFixed(2)}</td>
-                  <td style={{ padding: '15px' }}>{t.cashier_name}</td>
+                <tr key={t.id}>
+                  <td style={{ color: 'var(--text-muted)' }}>{new Date(t.created_at).toLocaleDateString()}</td>
+                  <td style={{ fontWeight: 'bold' }}>{t.branch_name}</td>
+                  <td>{t.product_name}</td>
+                  <td>
+                    <span style={{ 
+                      padding: '4px 10px', borderRadius: '20px', fontSize: '0.85em', fontWeight: 'bold',
+                      background: t.transaction_type === 'SALE' ? '#ffebee' : '#e8f5e9',
+                      color: t.transaction_type === 'SALE' ? '#d32f2f' : '#2e7d32',
+                      border: t.transaction_type === 'SALE' ? '1px solid #ffcdd2' : '1px solid #a5d6a7'
+                    }}>
+                      {t.transaction_type}
+                    </span>
+                  </td>
+                  <td>{t.quantity}</td>
+                  <td style={{ fontWeight: 'bold' }}>₱{parseFloat(t.total_price).toFixed(2)}</td>
+                  <td>{t.cashier_name}</td>
                 </tr>
               ))
             )}

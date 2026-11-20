@@ -53,14 +53,12 @@ export default function UserManagement() {
     }
   };
 
-  // --- TRIGGER EDIT MODAL ---
   const openEditModal = (user) => {
     setEditingUser(user);
     setEditFormData({ role: user.role, branch_id: user.branch_id || '' });
     setEditError('');
   };
 
-  // --- SUBMIT EDIT ---
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (editFormData.role !== 'super_admin' && !editFormData.branch_id) {
@@ -71,8 +69,8 @@ export default function UserManagement() {
       await axios.put(`${API_URL}/api/users/${editingUser.id}`, editFormData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setEditingUser(null); // Close modal
-      fetchData(); // Refresh table
+      setEditingUser(null); 
+      fetchData(); 
     } catch (err) {
       setEditError(err.response?.data?.message || 'Error updating user');
     }
@@ -110,18 +108,18 @@ export default function UserManagement() {
 
   return (
     <div>
-      <h2>User Management</h2>
+      <h2 className="page-title">User Management</h2>
       
-      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
-        <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+      <div className="theme-table-container">
+        <table className="theme-table" style={{ minWidth: '900px' }}>
+          <thead>
             <tr>
-              <th style={{ padding: '15px' }}>Username</th>
-              <th style={{ padding: '15px' }}>Email</th>
-              <th style={{ padding: '15px' }}>Role</th>
-              <th style={{ padding: '15px' }}>Branch</th>
-              <th style={{ padding: '15px' }}>Status</th>
-              <th style={{ padding: '15px' }}>Actions</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Branch</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -129,18 +127,24 @@ export default function UserManagement() {
               <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>No users found.</td></tr>
             ) : (
               users.map(u => (
-                <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '15px', fontWeight: 'bold' }}>{u.username}</td>
-                  <td style={{ padding: '15px', color: '#555' }}>{u.email}</td>
-                  <td style={{ padding: '15px' }}><strong style={{ color: u.role === 'super_admin' ? '#d32f2f' : '#0066cc' }}>{u.role.toUpperCase()}</strong></td>
+                <tr key={u.id}>
+                  <td style={{ fontWeight: 'bold' }}>{u.username}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{u.email}</td>
+                  <td>
+                    <strong style={{ color: u.role === 'super_admin' ? '#d32f2f' : 'var(--dark-pink)' }}>
+                      {u.role.toUpperCase()}
+                    </strong>
+                  </td>
                   
-                  <td style={{ padding: '15px' }}>
-                    {u.is_approved ? (u.branch_name || <span style={{ color: 'red' }}>UNASSIGNED</span>) : (
+                  {/* Branch Column */}
+                  <td>
+                    {u.is_approved ? (u.branch_name || <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>UNASSIGNED</span>) : (
                       currentUser.role === 'super_admin' && u.role !== 'super_admin' ? (
                         <select 
                           onChange={(e) => setSelectedBranches({...selectedBranches, [u.id]: e.target.value})}
                           defaultValue=""
-                          style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }}
+                          className="theme-input"
+                          style={{ padding: '8px', width: '150px' }}
                         >
                           <option value="">-- Assign --</option>
                           {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
@@ -149,34 +153,36 @@ export default function UserManagement() {
                     )}
                   </td>
 
-                  <td style={{ padding: '15px' }}>
+                  {/* Status Column */}
+                  <td>
                     <span style={{ 
-                      padding: '5px 10px', borderRadius: '15px', fontSize: '0.8em', fontWeight: 'bold',
-                      background: u.is_approved ? '#ccffcc' : '#fff3cd', 
-                      color: u.is_approved ? '#006600' : '#856404' 
+                      padding: '6px 12px', borderRadius: '20px', fontSize: '0.8em', fontWeight: 'bold',
+                      background: u.is_approved ? '#e8f5e9' : '#fff8e1', 
+                      color: u.is_approved ? '#2e7d32' : '#f57f17',
+                      border: u.is_approved ? '1px solid #a5d6a7' : '1px solid #ffe082'
                     }}>
                       {u.is_approved ? 'APPROVED' : 'PENDING'}
                     </span>
                   </td>
 
-                  <td style={{ padding: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {/* Actions Column */}
+                  <td style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     
                     {!u.is_approved && (
                       <>
-                        <button onClick={() => handleApprove(u.id, u.role)} style={{ background: '#4caf50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
-                        <button onClick={() => triggerReject(u.id)} style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
+                        <button onClick={() => handleApprove(u.id, u.role)} className="btn-success" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>Approve</button>
+                        <button onClick={() => triggerReject(u.id)} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>Reject</button>
                       </>
                     )}
 
-                    {/* EDIT BUTTON: Visible for approved users to SA */}
                     {u.is_approved && currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
-                      <button onClick={() => openEditModal(u)} style={{ background: '#0066cc', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                      <button onClick={() => openEditModal(u)} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
                         Edit
                       </button>
                     )}
 
                     {currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
-                      <button onClick={() => triggerDelete(u.id)} style={{ background: '#d32f2f', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                      <button onClick={() => triggerDelete(u.id)} className="btn-danger" style={{ background: '#d32f2f', padding: '6px 12px', fontSize: '0.9rem' }}>
                         Delete
                       </button>
                     )}
@@ -198,19 +204,22 @@ export default function UserManagement() {
 
       {/* --- EDIT USER MODAL --- */}
       {editingUser && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '30px', borderRadius: '8px', maxWidth: '400px', width: '100%', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ marginTop: 0, color: '#0066cc' }}>Edit User: {editingUser.username}</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', width: '100%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
             
-            {editError && <p style={{ color: '#d32f2f', background: '#ffebee', padding: '10px', borderRadius: '5px' }}>{editError}</p>}
+            <h3 style={{ marginTop: 0, color: 'var(--dark-pink)', borderBottom: '2px solid #fdf2f5', paddingBottom: '10px' }}>
+              Edit User: {editingUser.username}
+            </h3>
             
-            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {editError && <p style={{ color: '#d32f2f', background: '#ffebee', padding: '10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.9rem' }}>{editError}</p>}
+            
+            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>System Role</label>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '0.9rem' }}>System Role</label>
                 <select 
                   value={editFormData.role} 
                   onChange={(e) => setEditFormData({...editFormData, role: e.target.value})}
-                  style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+                  className="theme-input"
                 >
                   <option value="staff">Staff</option>
                   <option value="admin">Branch Admin</option>
@@ -220,11 +229,11 @@ export default function UserManagement() {
 
               {editFormData.role !== 'super_admin' && (
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Assign Branch</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '0.9rem' }}>Assign Branch</label>
                   <select 
                     value={editFormData.branch_id} 
                     onChange={(e) => setEditFormData({...editFormData, branch_id: e.target.value})}
-                    style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+                    className="theme-input"
                   >
                     <option value="">-- Select Branch --</option>
                     {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
@@ -232,9 +241,13 @@ export default function UserManagement() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '10px', background: '#e0e0e0', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: '10px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Save Changes</button>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                <button type="button" onClick={() => setEditingUser(null)} className="btn-secondary" style={{ flex: 1 }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                  Save Changes
+                </button>
               </div>
             </form>
           </div>

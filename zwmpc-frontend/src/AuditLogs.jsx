@@ -18,32 +18,51 @@ export default function AuditLogs() {
 
   return (
     <div>
-      <h2>System Audit Trail</h2>
-      <p style={{ color: '#666' }}>Review the latest system activities and data synchronizations.</p>
+      <h2 className="page-title">System Audit Trail</h2>
+      <p style={{ color: 'var(--text-muted)', marginTop: '-10px', marginBottom: '25px', fontSize: '1rem' }}>
+        Review the latest system activities, user logins, and data synchronizations.
+      </p>
       
-      <div style={{ background: 'white', borderRadius: '8px', overflowX: 'auto', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-        <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+      <div className="theme-table-container">
+        <table className="theme-table" style={{ minWidth: '700px' }}>
+          <thead>
             <tr>
-              <th style={{ padding: '15px' }}>Date & Time</th>
-              <th style={{ padding: '15px' }}>User</th>
-              <th style={{ padding: '15px' }}>Action</th>
-              <th style={{ padding: '15px' }}>Details</th>
+              <th>Date & Time</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Details</th>
             </tr>
           </thead>
           <tbody>
-            {logs.map(log => (
-              <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ padding: '15px' }}>{new Date(log.created_at).toLocaleString()}</td>
-                <td style={{ padding: '15px', fontWeight: 'bold' }}>{log.username || 'System'}</td>
-                <td style={{ padding: '15px' }}>
-                  <span style={{ padding: '5px 10px', background: '#e3f2fd', color: '#0066cc', borderRadius: '5px', fontSize: '0.85em', fontWeight: 'bold' }}>
-                    {log.action}
-                  </span>
+            {logs.length === 0 ? (
+              <tr>
+                <td colSpan="4" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No audit logs found.
                 </td>
-                <td style={{ padding: '15px', color: '#555' }}>{log.details}</td>
               </tr>
-            ))}
+            ) : (
+              logs.map(log => (
+                <tr key={log.id}>
+                  <td style={{ color: 'var(--text-muted)' }}>
+                    {new Date(log.created_at).toLocaleString()}
+                  </td>
+                  <td style={{ fontWeight: 'bold' }}>
+                    {log.username || 'System'}
+                  </td>
+                  <td>
+                    <span style={{ 
+                      padding: '6px 12px', borderRadius: '20px', fontSize: '0.85em', fontWeight: 'bold',
+                      background: '#fdf2f5', color: 'var(--dark-pink)', border: '1px solid var(--primary-pink)'
+                    }}>
+                      {log.action}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--text-dark)' }}>
+                    {log.details}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -45,69 +45,116 @@ export default function Products() {
     }
   };
 
+  // --- EXPORT INVENTORY TO CSV ---
+  const downloadCSV = () => {
+    if (products.length === 0) return alert('No products to export');
+    
+    const headers = ['Branch', 'Product Name', 'SKU', 'Category', 'Price', 'Stock Quantity'];
+    const rows = products.map(p => [
+      p.branch_name,
+      p.name,
+      p.sku,
+      p.category,
+      p.price,
+      p.stock_quantity
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `inventory_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+  };
+
   return (
     <div>
-      <h2>Product & Inventory Management</h2>
+      <h2 className="page-title">Product & Inventory Management</h2>
 
       {/* Add Product Form (Admins Only) */}
       {(user.role === 'super_admin' || user.role === 'admin') && (
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-          <h3>Add New Product</h3>
-          {message && <p style={{ color: message.includes('success') ? 'green' : 'red' }}>{message}</p>}
+        <div className="theme-card">
+          <h3 style={{ marginTop: 0, color: 'var(--text-dark)' }}>Add New Product</h3>
           
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-            <input type="text" name="name" placeholder="Product Name" value={formData.name} onChange={handleChange} required style={styles.input} />
-            <input type="text" name="sku" placeholder="SKU (Unique)" value={formData.sku} onChange={handleChange} required style={styles.input} />
-            <input type="text" name="category" placeholder="Category" value={formData.category} onChange={handleChange} required style={styles.input} />
-            <input type="number" step="0.01" name="price" placeholder="Price" value={formData.price} onChange={handleChange} required style={styles.input} />
-            <input type="number" name="stock_quantity" placeholder="Initial Stock" value={formData.stock_quantity} onChange={handleChange} required style={styles.input} />
+          {message && (
+            <p style={{ 
+              color: message.includes('success') ? '#2e7d32' : '#d32f2f',
+              background: message.includes('success') ? '#e8f5e9' : '#ffebee',
+              padding: '10px', borderRadius: '5px', fontWeight: 'bold'
+            }}>
+              {message}
+            </p>
+          )}
+          
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <input type="text" name="name" placeholder="Product Name" value={formData.name} onChange={handleChange} required className="theme-input" />
+            <input type="text" name="sku" placeholder="SKU (Unique)" value={formData.sku} onChange={handleChange} required className="theme-input" />
+            <input type="text" name="category" placeholder="Category" value={formData.category} onChange={handleChange} required className="theme-input" />
+            <input type="number" step="0.01" name="price" placeholder="Price" value={formData.price} onChange={handleChange} required className="theme-input" />
+            <input type="number" name="stock_quantity" placeholder="Initial Stock" value={formData.stock_quantity} onChange={handleChange} required className="theme-input" />
             
             {/* Super Admin must select a branch */}
             {user.role === 'super_admin' && (
-              <select name="branch_id" value={formData.branch_id} onChange={handleChange} required style={styles.input}>
+              <select name="branch_id" value={formData.branch_id} onChange={handleChange} required className="theme-input">
                 <option value="">Select Branch</option>
                 {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
               </select>
             )}
 
-            <button type="submit" style={{ ...styles.btn, gridColumn: 'span 2' }}>Add Product</button>
+            <button type="submit" className="btn-primary" style={{ gridColumn: 'span 2', marginTop: '10px' }}>
+              Add Product
+            </button>
           </form>
         </div>
       )}
 
+      {/* Table Header with CSV Download Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '30px' }}>
+        <h3 style={{ margin: 0, color: 'var(--text-dark)' }}>Inventory List</h3>
+        <button onClick={downloadCSV} className="btn-success">
+          Download CSV
+        </button>
+      </div>
+
       {/* Products Table */}
-      <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+      <div className="theme-table-container">
+        <table className="theme-table">
+          <thead>
             <tr>
-              <th style={styles.th}>Product Name</th>
-              <th style={styles.th}>SKU</th>
-              <th style={styles.th}>Category</th>
-              <th style={styles.th}>Price</th>
-              <th style={styles.th}>Stock</th>
-              <th style={styles.th}>Branch</th>
+              <th>Product Name</th>
+              <th>SKU</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Branch</th>
             </tr>
           </thead>
           <tbody>
             {products.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>No products found.</td></tr>
+              <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No products found.</td></tr>
             ) : (
               products.map(product => (
-                <tr key={product.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={styles.td}>{product.name}</td>
-                  <td style={styles.td}>{product.sku}</td>
-                  <td style={styles.td}>{product.category}</td>
-                  <td style={styles.td}>₱{parseFloat(product.price).toFixed(2)}</td>
-                  <td style={styles.td}>
+                <tr key={product.id}>
+                  <td style={{ fontWeight: 'bold', color: 'var(--dark-pink)' }}>{product.name}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{product.sku}</td>
+                  <td>{product.category}</td>
+                  <td>₱{parseFloat(product.price).toFixed(2)}</td>
+                  <td>
                     {product.stock_quantity <= 10 ? (
-                      <span style={{ background: '#ffcccc', color: '#d32f2f', padding: '5px 10px', borderRadius: '5px', fontWeight: 'bold' }}>
+                      <span style={{ 
+                        background: '#ffebee', color: '#d32f2f', 
+                        padding: '5px 10px', borderRadius: '20px', 
+                        fontWeight: 'bold', fontSize: '0.85em',
+                        border: '1px solid #ffcdd2'
+                      }}>
                         ⚠️ {product.stock_quantity} (Low)
                       </span>
                     ) : (
-                      <strong style={{ color: 'green' }}>{product.stock_quantity}</strong>
+                      <strong style={{ color: '#2e7d32' }}>{product.stock_quantity}</strong>
                     )}
                   </td>
-                  <td style={styles.td}>{product.branch_name}</td>
+                  <td>{product.branch_name}</td>
                 </tr>
               ))
             )}
@@ -117,10 +164,3 @@ export default function Products() {
     </div>
   );
 }
-
-const styles = {
-  input: { padding: '10px', borderRadius: '5px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' },
-  btn: { padding: '12px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  th: { padding: '15px', fontWeight: 'bold' },
-  td: { padding: '15px' }
-};

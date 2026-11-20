@@ -25,66 +25,115 @@ export default function DashboardHome() {
     fetchData();
   }, [API_URL, token]);
 
-  if (!stats || !analytics) return <h2>Loading Analytics...</h2>;
+  if (!stats || !analytics) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
+        <h2 style={{ color: 'var(--dark-pink)' }}>Loading Analytics...</h2>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h1 style={{ marginBottom: '5px' }}>Welcome, {user.username}</h1>
-      <p style={{ color: '#666', marginBottom: '20px' }}>
+      {/* Page Title */}
+      <h2 className="page-title">Welcome, {user.username}</h2>
+      <p style={{ color: 'var(--text-muted)', marginTop: '-10px', marginBottom: '30px', fontSize: '1.1rem' }}>
         {user.role === 'super_admin' ? 'System-Wide Overview' : 'Branch Overview'}
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Today's Sales</h3>
-          <h1 style={styles.cardValue}>₱{parseFloat(stats.todays_sales).toFixed(2)}</h1>
+      {/* STATS CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+        
+        {/* Today's Sales */}
+        <div className="theme-card" style={{ borderLeft: '5px solid var(--dark-pink)' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            💰 Today's Sales
+          </h3>
+          <h1 style={{ margin: 0, fontSize: '2.2rem', color: 'var(--text-dark)' }}>
+            ₱{parseFloat(stats.todays_sales).toFixed(2)}
+          </h1>
         </div>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Today's Transactions</h3>
-          <h1 style={styles.cardValue}>{stats.todays_transactions}</h1>
+
+        {/* Today's Transactions */}
+        <div className="theme-card" style={{ borderLeft: '5px solid var(--primary-pink)' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            🛒 Today's Transactions
+          </h3>
+          <h1 style={{ margin: 0, fontSize: '2.2rem', color: 'var(--text-dark)' }}>
+            {stats.todays_transactions}
+          </h1>
         </div>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Total Products</h3>
-          <h1 style={styles.cardValue}>{stats.total_products}</h1>
+
+        {/* Total Products */}
+        <div className="theme-card" style={{ borderLeft: '5px solid #888' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            📦 Total Products
+          </h3>
+          <h1 style={{ margin: 0, fontSize: '2.2rem', color: 'var(--text-dark)' }}>
+            {stats.total_products}
+          </h1>
         </div>
-        <div style={{ ...styles.card, background: stats.low_stock_count > 0 ? '#ffebee' : 'white' }}>
-          <h3 style={{...styles.cardTitle, color: stats.low_stock_count > 0 ? '#d32f2f' : '#666'}}>Low Stock Alerts</h3>
-          <h1 style={{...styles.cardValue, color: stats.low_stock_count > 0 ? '#d32f2f' : '#333'}}>{stats.low_stock_count}</h1>
+
+        {/* Low Stock Alerts (Red if > 0) */}
+        <div className="theme-card" style={{ 
+          borderLeft: stats.low_stock_count > 0 ? '5px solid #d32f2f' : '5px solid #2e7d32',
+          background: stats.low_stock_count > 0 ? '#fff5f5' : 'var(--white)'
+        }}>
+          <h3 style={{ 
+            margin: '0 0 10px 0', fontSize: '0.9rem', 
+            color: stats.low_stock_count > 0 ? '#d32f2f' : 'var(--text-muted)', 
+            textTransform: 'uppercase', letterSpacing: '1px' 
+          }}>
+            ⚠️ Low Stock Alerts
+          </h3>
+          <h1 style={{ 
+            margin: 0, fontSize: '2.2rem', 
+            color: stats.low_stock_count > 0 ? '#d32f2f' : 'var(--text-dark)' 
+          }}>
+            {stats.low_stock_count}
+          </h1>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={styles.chartCard}>
-          <h3>Revenue Trend (Last 7 Days)</h3>
+      {/* CHARTS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+        
+        {/* Revenue Trend Chart */}
+        <div className="theme-card">
+          <h3 style={{ marginTop: 0, color: 'var(--text-dark)', borderBottom: '2px solid #fdf2f5', paddingBottom: '10px' }}>
+            Revenue Trend (Last 7 Days)
+          </h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={analytics.salesTrend}>
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip formatter={(value) => `₱${value}`} />
-              <Line type="monotone" dataKey="revenue" stroke="#0066cc" strokeWidth={3} />
+              <XAxis dataKey="date" tick={{fill: 'var(--text-muted)'}} />
+              <YAxis tick={{fill: 'var(--text-muted)'}} />
+              <Tooltip 
+                formatter={(value) => `₱${value}`} 
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} 
+              />
+              {/* Changed line color to match theme */}
+              <Line type="monotone" dataKey="revenue" stroke="var(--dark-pink)" strokeWidth={3} dot={{r: 4, fill: 'var(--dark-pink)'}} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div style={styles.chartCard}>
-          <h3>Top 5 Best-Selling Products</h3>
+        {/* Top Products Chart */}
+        <div className="theme-card">
+          <h3 style={{ marginTop: 0, color: 'var(--text-dark)', borderBottom: '2px solid #fdf2f5', paddingBottom: '10px' }}>
+            Top 5 Best-Selling Products
+          </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={analytics.topProducts}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="total_sold" fill="#4caf50" />
+              <XAxis dataKey="name" tick={{fill: 'var(--text-muted)'}} />
+              <YAxis tick={{fill: 'var(--text-muted)'}} />
+              <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+              {/* Changed bar color to match theme */}
+              <Bar dataKey="total_sold" fill="var(--primary-pink)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+
       </div>
     </div>
   );
 }
-
-const styles = {
-  card: { background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
-  cardTitle: { margin: '0 0 10px 0', fontSize: '1rem', color: '#666' },
-  cardValue: { margin: 0, fontSize: '2rem', color: '#333' },
-  chartCard: { background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }
-};
