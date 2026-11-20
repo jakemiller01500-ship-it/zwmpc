@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import ConfirmModal from './ConfirmModal'; // Added Import
+import ConfirmModal from './ConfirmModal';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState({}); 
   
-  // State for the Custom Modal
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: '',
@@ -33,17 +32,26 @@ export default function UserManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleApprove = async (id) => {
+  // UPDATED: Added role parameter and branch validation
+  const handleApprove = async (id, role) => {
+    // Check if a branch is selected (skip check if approving a Super Admin)
+    if (role !== 'super_admin' && !selectedBranches[id]) {
+      alert("Please assign a branch to this user before approving.");
+      return; 
+    }
+
     try {
       await axios.post(`${API_URL}/api/users/approve`, 
         { user_id: id, branch_id: selectedBranches[id] }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchData();
-    } catch (err) { alert('Error approving user'); }
+      alert("User approved and assigned to branch successfully!");
+    } catch (err) { 
+      alert(err.response?.data?.message || 'Error approving user'); 
+    }
   };
 
-  // --- TRIGGER REJECT MODAL ---
   const triggerReject = (id) => {
     setModalConfig({
       isOpen: true,
@@ -59,7 +67,6 @@ export default function UserManagement() {
     });
   };
 
-  // --- TRIGGER DELETE MODAL ---
   const triggerDelete = (id) => {
     setModalConfig({
       isOpen: true,
@@ -135,12 +142,12 @@ export default function UserManagement() {
                     
                     {!u.is_approved && (
                       <>
-                        <button onClick={() => handleApprove(u.id)} style={{ background: '#4caf50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
+                        {/* UPDATED: Passed u.role to handleApprove */}
+                        <button onClick={() => handleApprove(u.id, u.role)} style={{ background: '#4caf50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
                         <button onClick={() => triggerReject(u.id)} style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
                       </>
                     )}
 
-                    {/* Delete Button Logic */}
                     {currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
                       <button onClick={() => triggerDelete(u.id)} style={{ background: '#d32f2f', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         Delete
@@ -154,7 +161,6 @@ export default function UserManagement() {
         </table>
       </div>
 
-      {/* ADDED: The Custom Confirmation Modal */}
       <ConfirmModal 
         isOpen={modalConfig.isOpen}
         onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}

@@ -64,7 +64,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// --- UPDATED LOGIN (Check Approval) ---
+// --- UPDATED LOGIN (Check Approval & Branch Assignment) ---
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     
@@ -76,13 +76,20 @@ app.post('/api/login', (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        // CHECK APPROVAL STATUS
+        // 1. CHECK APPROVAL STATUS
         if (!user.is_approved) {
             return res.status(403).json({ message: 'Account pending approval. Please contact your administrator.' });
         }
 
+        // 2. CHECK BRANCH ASSIGNMENT (Super Admin is exempt)
+        if (user.role !== 'super_admin' && !user.branch_id) {
+            return res.status(403).json({ message: 'Account is approved but not assigned to a branch. Please contact the Super Admin.' });
+        }
+
+        // 3. GENERATE TOKEN
         const token = jwt.sign({ id: user.id, role: user.role, branch_id: user.branch_id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
+        // 4. LOG THE SUCCESSFUL LOGIN
         logAction(user.id, 'LOGIN', `User ${user.username} logged in.`);
 
         res.json({ token, user: { id: user.id, username: user.username, role: user.role, branch_id: user.branch_id } });
@@ -103,25 +110,40 @@ app.get('/api/users/pending', verifyToken, requireRole(['super_admin', 'admin'])
 app.post('/api/users/approve', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
     let { user_id, branch_id } = req.body;
     
-    let sql = 'UPDATE users SET is_approved = TRUE, branch_id = ? WHERE id = ?';
-    
-    // Super Admin can assign a branch. Admin can only approve users for their OWN branch.
+    // 1. If an Admin is approving, force the branch to be their own
     if (req.user.role === 'admin') {
-        branch_id = req.user.branch_id; // Force the Admin's branch ID
+        branch_id = req.user.branch_id; 
     }
 
-    db.query(sql, [branch_id || null, user_id], (err, result) => {
+    // 2. VALIDATION: Ensure a branch is actually provided (for Super Admin)
+    if (!branch_id) {
+        return res.status(400).json({ message: 'A branch must be assigned before this user can be approved.' });
+    }
+
+    // 3. Update the user
+    const sql = 'UPDATE users SET is_approved = TRUE, branch_id = ? WHERE id = ?';
+    
+    db.query(sql, [branch_id, user_id], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
-        logAction(req.user.id, 'APPROVE_USER', `Approved user ID ${user_id}.`);
-        res.json({ message: 'User approved successfully.' });
+        
+        // Log the action for the Audit Trail
+        logAction(req.user.id, 'APPROVE_USER', `Approved user ID ${user_id} and assigned to branch ID ${branch_id}.`);
+        
+        res.json({ message: 'User approved and assigned successfully.' });
     });
 });
 
 // --- REJECT USER ---
 app.delete('/api/users/reject/:id', verifyToken, requireRole(['super_admin', 'admin']), (req, res) => {
+    const targetUserId = req.params.id;
     const sql = 'DELETE FROM users WHERE id = ? AND is_approved = FALSE';
-    db.query(sql, [req.params.id], (err, result) => {
+    
+    db.query(sql, [targetUserId], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
+        
+        // Log the rejection for the Audit Trail
+        logAction(req.user.id, 'REJECT_USER', `Rejected and deleted registration request for user ID ${targetUserId}.`);
+        
         res.json({ message: 'User request rejected and deleted.' });
     });
 });
