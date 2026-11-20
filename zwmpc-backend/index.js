@@ -34,9 +34,14 @@ const db = mysql.createPool({
 app.post('/api/register', async (req, res) => {
     const { username, email, password, role } = req.body; 
     
-    // Super Admin check (still enforce only one - even if UI hides it)
+    // Super Admin check
     if (role === 'super_admin') {
         db.query('SELECT id FROM users WHERE role = "super_admin"', async (err, results) => {
+            // FIX: Added error handling here to prevent crash
+            if (err) {
+                console.error("🔥 DB ERROR during Super Admin check:", err.message);
+                return res.status(500).json({ error: 'Database error during registration.' });
+            }
             if (results.length > 0) return res.status(400).json({ message: 'A Super Admin already exists.' });
             proceed();
         });
@@ -44,31 +49,36 @@ app.post('/api/register', async (req, res) => {
 
     async function proceed() {
         db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error("🔥 DB ERROR during Email check:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
             if (results.length > 0) return res.status(400).json({ message: 'Email already in use' });
 
             try {
                 const salt = await bcrypt.genSalt(10);
                 const hashedPassword = await bcrypt.hash(password, salt);
 
-                // Notice: is_approved is set to FALSE by default, branch_id is NULL
                 const sql = 'INSERT INTO users (username, email, password_hash, role, is_approved) VALUES (?, ?, ?, ?, FALSE)';
                 db.query(sql, [username, email, hashedPassword, role], (err, result) => {
-                    if (err) return res.status(500).json({ error: err.message });
+                    if (err) {
+                        console.error("🔥 DB ERROR during Insert:", err.message);
+                        return res.status(500).json({ error: err.message });
+                    }
                     res.status(201).json({ message: 'Registration successful! Please wait for Admin approval.' });
                 });
             } catch (error) {
+                console.error("🔥 BCRYPT ERROR:", error.message);
                 res.status(500).json({ error: 'Server error during registration' });
             }
         });
     }
 });
 
-// --- UPDATED LOGIN (Check Approval, Branch Assignment, & Branch Status) ---
+// --- UPDATED LOGIN ---
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     
-    // NEW: Join with branches table to check if the branch is active
     const sql = `
         SELECT u.*, b.is_active AS branch_is_active 
         FROM users u 
@@ -77,48 +87,52 @@ app.post('/api/login', (req, res) => {
     `;
 
     db.query(sql, [email], async (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error("🔥 DB ERROR during Login Select:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
         if (results.length === 0) return res.status(404).json({ message: 'User not found' });
 
         const user = results[0];
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        // 1. CHECK APPROVAL STATUS
-        if (!user.is_approved) {
-            return res.status(403).json({ message: 'Account pending approval. Please contact your administrator.' });
-        }
+        try {
+            const isMatch = await bcrypt.compare(password, user.password_hash);
+            if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        // 2. CHECK BRANCH ASSIGNMENT & STATUS (Super Admin is exempt)
-        if (user.role !== 'super_admin') {
-            if (!user.branch_id) {
-                return res.status(403).json({ message: 'Account is approved but not assigned to a branch. Please contact the Super Admin.' });
+            if (!user.is_approved) {
+                return res.status(403).json({ message: 'Account pending approval. Please contact your administrator.' });
             }
-            
-            // NEW: Check if the branch is active
-            if (user.branch_is_active === 0 || user.branch_is_active === false) {
-                return res.status(403).json({ message: 'Your assigned branch is currently inactive. Please contact the Super Admin.' });
+
+            if (user.role !== 'super_admin') {
+                if (!user.branch_id) {
+                    return res.status(403).json({ message: 'Account is approved but not assigned to a branch. Please contact the Super Admin.' });
+                }
+                if (user.branch_is_active === 0 || user.branch_is_active === false) {
+                    return res.status(403).json({ message: 'Your assigned branch is currently inactive. Please contact the Super Admin.' });
+                }
             }
+
+            // FIX: Ensure JWT_SECRET exists
+            if (!process.env.JWT_SECRET) {
+                console.error("🔥 FATAL: JWT_SECRET is missing in Render Environment Variables!");
+                return res.status(500).json({ message: 'Server configuration error.' });
+            }
+
+            const token = jwt.sign({ id: user.id, role: user.role, branch_id: user.branch_id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+            logAction(user.id, 'LOGIN', `User ${user.username} logged in.`);
+
+            res.json({ 
+                token, 
+                user: { 
+                    id: user.id, username: user.username, role: user.role, branch_id: user.branch_id,
+                    contact_number: user.contact_number, profile_picture: user.profile_picture 
+                } 
+            });
+        } catch (error) {
+            console.error("🔥 AUTH PROCESSING ERROR:", error.message);
+            res.status(500).json({ error: "Authentication processing failed." });
         }
-
-        // 3. GENERATE TOKEN
-        const token = jwt.sign({ id: user.id, role: user.role, branch_id: user.branch_id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-        // 4. LOG THE SUCCESSFUL LOGIN
-        logAction(user.id, 'LOGIN', `User ${user.username} logged in.`);
-
-        // 5. RETURN USER DATA (Including Profile Fields)
-        res.json({ 
-            token, 
-            user: { 
-                id: user.id, 
-                username: user.username, 
-                role: user.role, 
-                branch_id: user.branch_id,
-                contact_number: user.contact_number, 
-                profile_picture: user.profile_picture 
-            } 
-        });
     });
 });
 
