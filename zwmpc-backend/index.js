@@ -148,6 +148,35 @@ app.delete('/api/users/reject/:id', verifyToken, requireRole(['super_admin', 'ad
     });
 });
 
+// --- EDIT/UPDATE USER (Super Admin Only) ---
+app.put('/api/users/:id', verifyToken, requireRole(['super_admin']), (req, res) => {
+    const targetId = req.params.id;
+    const { role, branch_id } = req.body;
+
+    // Prevent Super Admin from accidentally changing their own role/branch
+    if (parseInt(targetId) === req.user.id) {
+        return res.status(400).json({ message: 'You cannot edit your own Super Admin account.' });
+    }
+
+    // Require a branch if the role is not super_admin
+    if (role !== 'super_admin' && !branch_id) {
+        return res.status(400).json({ message: 'A branch must be assigned for Admin and Staff roles.' });
+    }
+
+    // If the user is super_admin, branch_id should be null
+    const finalBranchId = role === 'super_admin' ? null : branch_id;
+
+    const sql = 'UPDATE users SET role = ?, branch_id = ? WHERE id = ?';
+    
+    db.query(sql, [role, finalBranchId, targetId], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        logAction(req.user.id, 'EDIT_USER', `Updated user ID ${targetId} to role ${role}.`);
+        
+        res.json({ message: 'User account updated successfully.' });
+    });
+});
+
 // ==========================================
 // USER MANAGEMENT (GET ALL & DELETE)
 // ==========================================

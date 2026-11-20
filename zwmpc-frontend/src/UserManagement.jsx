@@ -7,12 +7,15 @@ export default function UserManagement() {
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState({}); 
   
+  // State for Delete/Reject Modal
   const [modalConfig, setModalConfig] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    action: null
+    isOpen: false, title: '', message: '', action: null
   });
+
+  // State for Edit Modal
+  const [editingUser, setEditingUser] = useState(null);
+  const [editFormData, setEditFormData] = useState({ role: '', branch_id: '' });
+  const [editError, setEditError] = useState('');
 
   const token = localStorage.getItem('token');
   const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -32,9 +35,7 @@ export default function UserManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // UPDATED: Added role parameter and branch validation
   const handleApprove = async (id, role) => {
-    // Check if a branch is selected (skip check if approving a Super Admin)
     if (role !== 'super_admin' && !selectedBranches[id]) {
       alert("Please assign a branch to this user before approving.");
       return; 
@@ -49,6 +50,31 @@ export default function UserManagement() {
       alert("User approved and assigned to branch successfully!");
     } catch (err) { 
       alert(err.response?.data?.message || 'Error approving user'); 
+    }
+  };
+
+  // --- TRIGGER EDIT MODAL ---
+  const openEditModal = (user) => {
+    setEditingUser(user);
+    setEditFormData({ role: user.role, branch_id: user.branch_id || '' });
+    setEditError('');
+  };
+
+  // --- SUBMIT EDIT ---
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (editFormData.role !== 'super_admin' && !editFormData.branch_id) {
+      return setEditError('Please assign a branch for this role.');
+    }
+
+    try {
+      await axios.put(`${API_URL}/api/users/${editingUser.id}`, editFormData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEditingUser(null); // Close modal
+      fetchData(); // Refresh table
+    } catch (err) {
+      setEditError(err.response?.data?.message || 'Error updating user');
     }
   };
 
@@ -76,9 +102,7 @@ export default function UserManagement() {
         try {
           await axios.delete(`${API_URL}/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
           fetchData();
-        } catch (err) { 
-          alert(err.response?.data?.message || 'Error deleting user'); 
-        }
+        } catch (err) { alert(err.response?.data?.message || 'Error deleting user'); }
         setModalConfig(prev => ({ ...prev, isOpen: false }));
       }
     });
@@ -110,9 +134,8 @@ export default function UserManagement() {
                   <td style={{ padding: '15px', color: '#555' }}>{u.email}</td>
                   <td style={{ padding: '15px' }}><strong style={{ color: u.role === 'super_admin' ? '#d32f2f' : '#0066cc' }}>{u.role.toUpperCase()}</strong></td>
                   
-                  {/* Branch Column */}
                   <td style={{ padding: '15px' }}>
-                    {u.is_approved ? (u.branch_name || 'N/A') : (
+                    {u.is_approved ? (u.branch_name || <span style={{ color: 'red' }}>UNASSIGNED</span>) : (
                       currentUser.role === 'super_admin' && u.role !== 'super_admin' ? (
                         <select 
                           onChange={(e) => setSelectedBranches({...selectedBranches, [u.id]: e.target.value})}
@@ -126,7 +149,6 @@ export default function UserManagement() {
                     )}
                   </td>
 
-                  {/* Status Column */}
                   <td style={{ padding: '15px' }}>
                     <span style={{ 
                       padding: '5px 10px', borderRadius: '15px', fontSize: '0.8em', fontWeight: 'bold',
@@ -137,15 +159,20 @@ export default function UserManagement() {
                     </span>
                   </td>
 
-                  {/* Actions Column */}
-                  <td style={{ padding: '15px', display: 'flex', gap: '10px' }}>
+                  <td style={{ padding: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     
                     {!u.is_approved && (
                       <>
-                        {/* UPDATED: Passed u.role to handleApprove */}
                         <button onClick={() => handleApprove(u.id, u.role)} style={{ background: '#4caf50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
                         <button onClick={() => triggerReject(u.id)} style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
                       </>
+                    )}
+
+                    {/* EDIT BUTTON: Visible for approved users to SA */}
+                    {u.is_approved && currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
+                      <button onClick={() => openEditModal(u)} style={{ background: '#0066cc', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        Edit
+                      </button>
                     )}
 
                     {currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
@@ -168,7 +195,51 @@ export default function UserManagement() {
         title={modalConfig.title}
         message={modalConfig.message}
       />
-      
+
+      {/* --- EDIT USER MODAL --- */}
+      {editingUser && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '30px', borderRadius: '8px', maxWidth: '400px', width: '100%', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ marginTop: 0, color: '#0066cc' }}>Edit User: {editingUser.username}</h3>
+            
+            {editError && <p style={{ color: '#d32f2f', background: '#ffebee', padding: '10px', borderRadius: '5px' }}>{editError}</p>}
+            
+            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>System Role</label>
+                <select 
+                  value={editFormData.role} 
+                  onChange={(e) => setEditFormData({...editFormData, role: e.target.value})}
+                  style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+                >
+                  <option value="staff">Staff</option>
+                  <option value="admin">Branch Admin</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+              </div>
+
+              {editFormData.role !== 'super_admin' && (
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Assign Branch</label>
+                  <select 
+                    value={editFormData.branch_id} 
+                    onChange={(e) => setEditFormData({...editFormData, branch_id: e.target.value})}
+                    style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+                  >
+                    <option value="">-- Select Branch --</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '10px', background: '#e0e0e0', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, padding: '10px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
