@@ -64,11 +64,19 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// --- UPDATED LOGIN (Check Approval & Branch Assignment) ---
+// --- UPDATED LOGIN (Check Approval, Branch Assignment, & Branch Status) ---
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     
-    db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
+    // NEW: Join with branches table to check if the branch is active
+    const sql = `
+        SELECT u.*, b.is_active AS branch_is_active 
+        FROM users u 
+        LEFT JOIN branches b ON u.branch_id = b.id 
+        WHERE u.email = ?
+    `;
+
+    db.query(sql, [email], async (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         if (results.length === 0) return res.status(404).json({ message: 'User not found' });
 
@@ -81,9 +89,16 @@ app.post('/api/login', (req, res) => {
             return res.status(403).json({ message: 'Account pending approval. Please contact your administrator.' });
         }
 
-        // 2. CHECK BRANCH ASSIGNMENT (Super Admin is exempt)
-        if (user.role !== 'super_admin' && !user.branch_id) {
-            return res.status(403).json({ message: 'Account is approved but not assigned to a branch. Please contact the Super Admin.' });
+        // 2. CHECK BRANCH ASSIGNMENT & STATUS (Super Admin is exempt)
+        if (user.role !== 'super_admin') {
+            if (!user.branch_id) {
+                return res.status(403).json({ message: 'Account is approved but not assigned to a branch. Please contact the Super Admin.' });
+            }
+            
+            // NEW: Check if the branch is active
+            if (user.branch_is_active === 0 || user.branch_is_active === false) {
+                return res.status(403).json({ message: 'Your assigned branch is currently inactive. Please contact the Super Admin.' });
+            }
         }
 
         // 3. GENERATE TOKEN
@@ -92,6 +107,7 @@ app.post('/api/login', (req, res) => {
         // 4. LOG THE SUCCESSFUL LOGIN
         logAction(user.id, 'LOGIN', `User ${user.username} logged in.`);
 
+        // 5. RETURN USER DATA (Including Profile Fields)
         res.json({ 
             token, 
             user: { 
@@ -99,8 +115,8 @@ app.post('/api/login', (req, res) => {
                 username: user.username, 
                 role: user.role, 
                 branch_id: user.branch_id,
-                contact_number: user.contact_number, // Added
-                profile_picture: user.profile_picture // Added
+                contact_number: user.contact_number, 
+                profile_picture: user.profile_picture 
             } 
         });
     });
@@ -257,6 +273,36 @@ app.get('/api/branches', verifyToken, (req, res) => {
     db.query('SELECT * FROM branches', (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
+    });
+});
+
+// --- TOGGLE BRANCH STATUS (Super Admin Only) ---
+app.put('/api/branches/:id/toggle', verifyToken, requireRole(['super_admin']), (req, res) => {
+    const branchId = req.params.id;
+    const sql = 'UPDATE branches SET is_active = NOT is_active WHERE id = ?';
+    
+    db.query(sql, [branchId], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        logAction(req.user.id, 'TOGGLE_BRANCH', `Toggled status for branch ID ${branchId}.`);
+        res.json({ message: 'Branch status updated successfully.' });
+    });
+});
+
+// --- DELETE BRANCH (Super Admin Only) ---
+app.delete('/api/branches/:id', verifyToken, requireRole(['super_admin']), (req, res) => {
+    const branchId = req.params.id;
+    const sql = 'DELETE FROM branches WHERE id = ?';
+    
+    db.query(sql, [branchId], (err, result) => {
+        if (err) {
+            // If foreign key constraint fails (e.g., branch has transactions)
+            if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+                return res.status(400).json({ message: 'Cannot delete branch because it has existing transactions. Please set it to Inactive instead.' });
+            }
+            return res.status(500).json({ error: err.message });
+        }
+        logAction(req.user.id, 'DELETE_BRANCH', `Deleted branch ID ${branchId}.`);
+        res.json({ message: 'Branch deleted successfully.' });
     });
 });
 

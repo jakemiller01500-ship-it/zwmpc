@@ -147,7 +147,7 @@ export default function UserManagement() {
                           style={{ padding: '8px', width: '150px' }}
                         >
                           <option value="">-- Assign --</option>
-                          {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                          {branches.filter(b => b.is_active).map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
                         </select>
                       ) : 'Pending'
                     )}
@@ -236,7 +236,7 @@ export default function UserManagement() {
                     className="theme-input"
                   >
                     <option value="">-- Select Branch --</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                    {branches.filter(b => b.is_active).map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
                   </select>
                 </div>
               )}
