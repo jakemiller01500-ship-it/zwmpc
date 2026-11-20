@@ -115,6 +115,12 @@ export default function Dashboard() {
           {user.role === 'super_admin' && (
             <Link to="/dashboard/audit" style={getLinkStyle('/dashboard/audit')}>📜 Audit Logs</Link>
           )}
+          {/* Add this inside the <nav> tag */}
+          <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '15px' }}>
+            <Link to="/dashboard/manual" style={getLinkStyle('/dashboard/manual')}>
+              User Manual
+            </Link>
+          </div>
         </nav>
 
         {/* Logout Button */}

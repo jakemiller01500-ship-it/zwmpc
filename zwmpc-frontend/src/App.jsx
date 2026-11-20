@@ -10,6 +10,7 @@ import DashboardHome from './DashboardHome';
 import Reports from './Reports';
 import AuditLogs from './AuditLogs';
 import Profile from './Profile'; 
+import UserManual from './UserManual';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="audit" element={<AuditLogs />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="manual" element={<UserManual />} />
         </Route>
         
       </Routes>

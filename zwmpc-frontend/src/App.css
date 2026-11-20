@@ -142,3 +142,35 @@ body {
   padding-bottom: 10px;
   display: inline-block;
 }
+
+/* =========================================
+   PRINT MEDIA STYLES (For User Manual)
+   ========================================= */
+@media print {
+  /* Hide the sidebar and no-print elements */
+  .sidebar, .no-print, button {
+    display: none !important;
+  }
+  
+  /* Make the main content take full width and remove background */
+  body, html, #root, .main-content {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Remove box shadows and borders for a clean paper look */
+  .theme-card, .manual-content {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure links print in black text */
+  a {
+    text-decoration: none;
+    color: black !important;
+  }
+}
