@@ -82,6 +82,9 @@ app.post('/api/login', (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id, role: user.role, branch_id: user.branch_id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        logAction(user.id, 'LOGIN', `User ${user.username} logged in.`);
+
         res.json({ token, user: { id: user.id, username: user.username, role: user.role, branch_id: user.branch_id } });
     });
 });
@@ -109,6 +112,7 @@ app.post('/api/users/approve', verifyToken, requireRole(['super_admin', 'admin']
 
     db.query(sql, [branch_id || null, user_id], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
+        logAction(req.user.id, 'APPROVE_USER', `Approved user ID ${user_id}.`);
         res.json({ message: 'User approved successfully.' });
     });
 });
@@ -161,6 +165,7 @@ app.delete('/api/users/:id', verifyToken, requireRole(['super_admin']), (req, re
     const sql = 'DELETE FROM users WHERE id = ?';
     db.query(sql, [userIdToDelete], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
+        logAction(req.user.id, 'DELETE_USER', `Deleted user ID ${userIdToDelete}.`);
         res.json({ message: 'User deleted successfully.' });
     });
 });
@@ -320,6 +325,7 @@ app.post('/api/products', verifyToken, requireRole(['super_admin', 'admin']), (r
             if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'SKU already exists' });
             return res.status(500).json({ error: err.message });
         }
+        logAction(req.user.id, 'ADD_PRODUCT', `Added product ${name} (SKU: ${sku}).`);
         res.status(201).json({ message: 'Product added successfully!', productId: result.insertId });
     });
 });
@@ -498,6 +504,47 @@ app.get('/api/reports/transactions', verifyToken, (req, res) => {
     sql += ' ORDER BY t.created_at DESC';
 
     db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// ==========================================
+// WEEK 6: SYSTEM AUDIT TRAIL & ANALYTICS
+// ==========================================
+
+// Helper function to log actions
+const logAction = (userId, action, details) => {
+    const sql = 'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)';
+    db.query(sql, [userId, action, details], (err) => {
+        if (err) console.error("Failed to write audit log:", err);
+    });
+};
+
+// Get Audit Logs (Super Admin Only)
+app.get('/api/audit-logs', verifyToken, requireRole(['super_admin']), (req, res) => {
+    const sql = `
+        SELECT a.*, u.username 
+        FROM audit_logs a 
+        LEFT JOIN users u ON a.user_id = u.id 
+        ORDER BY a.created_at DESC LIMIT 100
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Get Branch Analytics (Super Admin Only)
+app.get('/api/analytics/branches', verifyToken, requireRole(['super_admin']), (req, res) => {
+    const sql = `
+        SELECT b.branch_name, IFNULL(SUM(t.total_price), 0) as total_revenue, COUNT(t.id) as total_transactions
+        FROM branches b
+        LEFT JOIN transactions t ON b.id = t.branch_id AND t.transaction_type = 'SALE'
+        GROUP BY b.id
+        ORDER BY total_revenue DESC
+    `;
+    db.query(sql, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
     });

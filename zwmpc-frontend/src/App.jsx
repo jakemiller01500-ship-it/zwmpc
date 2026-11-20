@@ -8,6 +8,7 @@ import Products from './Products';
 import Transactions from './Transactions';
 import DashboardHome from './DashboardHome'; 
 import Reports from './Reports';
+import AuditLogs from './AuditLogs';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="products" element={<Products />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="audit" element={<AuditLogs />} />
         </Route>
         
       </Routes>

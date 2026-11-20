@@ -66,6 +66,12 @@ export default function Dashboard() {
               📊 Sales & Reports
             </Link>
           )}
+          {/* Audit Log (Super Admin Only) */}
+          {user.role === 'super_admin' && (
+            <Link to="/dashboard/audit" style={{ color: 'white', textDecoration: 'none' }}>
+              📜 System Audit Logs
+            </Link>
+          )}
         </nav>
 
         <button 

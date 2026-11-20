@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import ConfirmModal from './ConfirmModal'; // Added Import
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState({}); 
+  
+  // State for the Custom Modal
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    action: null
+  });
 
   const token = localStorage.getItem('token');
   const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -34,29 +43,44 @@ export default function UserManagement() {
     } catch (err) { alert('Error approving user'); }
   };
 
-  const handleReject = async (id) => {
-    if(!window.confirm("Reject and delete this request?")) return;
-    try {
-      await axios.delete(`${API_URL}/api/users/reject/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { alert('Error rejecting user'); }
+  // --- TRIGGER REJECT MODAL ---
+  const triggerReject = (id) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Reject Request',
+      message: 'Are you sure you want to reject and permanently delete this registration request?',
+      action: async () => {
+        try {
+          await axios.delete(`${API_URL}/api/users/reject/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          fetchData();
+        } catch (err) { alert('Error rejecting user'); }
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
-  const handleDelete = async (id) => {
-    if(!window.confirm("WARNING: Are you sure you want to permanently delete this user? This cannot be undone.")) return;
-    try {
-      await axios.delete(`${API_URL}/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { 
-      alert(err.response?.data?.message || 'Error deleting user'); 
-    }
+  // --- TRIGGER DELETE MODAL ---
+  const triggerDelete = (id) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete User Account',
+      message: 'WARNING: Are you sure you want to permanently delete this user? This action cannot be undone.',
+      action: async () => {
+        try {
+          await axios.delete(`${API_URL}/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          fetchData();
+        } catch (err) { 
+          alert(err.response?.data?.message || 'Error deleting user'); 
+        }
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   return (
     <div>
       <h2>User Management</h2>
       
-      {/* ADDED: overflowX: 'auto' so you can scroll right if the table is too wide */}
       <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
@@ -112,13 +136,13 @@ export default function UserManagement() {
                     {!u.is_approved && (
                       <>
                         <button onClick={() => handleApprove(u.id)} style={{ background: '#4caf50', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Approve</button>
-                        <button onClick={() => handleReject(u.id)} style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
+                        <button onClick={() => triggerReject(u.id)} style={{ background: '#f44336', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
                       </>
                     )}
 
                     {/* Delete Button Logic */}
                     {currentUser.role === 'super_admin' && parseInt(currentUser.id) !== parseInt(u.id) && (
-                      <button onClick={() => handleDelete(u.id)} style={{ background: '#d32f2f', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                      <button onClick={() => triggerDelete(u.id)} style={{ background: '#d32f2f', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         Delete
                       </button>
                     )}
@@ -129,6 +153,16 @@ export default function UserManagement() {
           </tbody>
         </table>
       </div>
+
+      {/* ADDED: The Custom Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={modalConfig.action}
+        title={modalConfig.title}
+        message={modalConfig.message}
+      />
+      
     </div>
   );
 }
