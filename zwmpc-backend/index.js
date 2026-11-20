@@ -710,6 +710,12 @@ app.put('/api/users/profile/me', verifyToken, async (req, res) => {
     }
 });
 
+// Global Error Handler para lumabas ang totoong error sa logs
+app.use((err, req, res, next) => {
+    console.error("🔥 GLOBAL ERROR:", err.stack);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, '0.0.0.0', () => {
