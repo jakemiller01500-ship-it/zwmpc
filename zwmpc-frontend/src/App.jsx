@@ -9,6 +9,7 @@ import Transactions from './Transactions';
 import DashboardHome from './DashboardHome'; 
 import Reports from './Reports';
 import AuditLogs from './AuditLogs';
+import Profile from './Profile'; 
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="reports" element={<Reports />} />
           <Route path="audit" element={<AuditLogs />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
         
       </Routes>

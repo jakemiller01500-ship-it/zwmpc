@@ -601,5 +601,58 @@ app.get('/api/analytics/branches', verifyToken, requireRole(['super_admin']), (r
     });
 });
 
+// ==========================================
+// USER PROFILE MANAGEMENT
+// ==========================================
+
+// Get Current User Profile
+app.get('/api/users/profile/me', verifyToken, (req, res) => {
+    const sql = 'SELECT id, username, email, role, contact_number, profile_picture, branch_id FROM users WHERE id = ?';
+    db.query(sql, [req.user.id], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (results.length === 0) return res.status(404).json({ message: 'User not found' });
+        res.json(results[0]);
+    });
+});
+
+// Update Profile
+app.put('/api/users/profile/me', verifyToken, async (req, res) => {
+    const { username, email, contact_number, profile_picture, password } = req.body;
+    const userId = req.user.id;
+
+    try {
+        let sql = 'UPDATE users SET username = ?, email = ?, contact_number = ?, profile_picture = ?';
+        let params = [username, email, contact_number, profile_picture];
+
+        // If the user provided a new password, hash it and add to query
+        if (password && password.trim() !== '') {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            sql += ', password_hash = ?';
+            params.push(hashedPassword);
+        }
+
+        sql += ' WHERE id = ?';
+        params.push(userId);
+
+        db.query(sql, params, (err, result) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Username or Email already in use.' });
+                return res.status(500).json({ error: err.message });
+            }
+            
+            logAction(userId, 'UPDATE_PROFILE', `User updated their profile details.`);
+            
+            // Return the updated user data so frontend can update localStorage
+            db.query('SELECT id, username, email, role, contact_number, profile_picture, branch_id FROM users WHERE id = ?', [userId], (err, results) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: 'Profile updated successfully!', user: results[0] });
+            });
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error while updating profile' });
+    }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

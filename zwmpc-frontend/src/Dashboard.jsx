@@ -59,13 +59,26 @@ export default function Dashboard() {
         
         {/* User Profile Section */}
         <div style={{ textAlign: 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ 
-            width: '65px', height: '65px', borderRadius: '50%', background: 'var(--primary-pink)', 
-            display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 12px auto',
-            color: 'white', fontSize: '1.8rem', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(244, 166, 184, 0.4)'
-          }}>
-            {user.username.charAt(0).toUpperCase()}
-          </div>
+          
+          {/* Clickable Avatar */}
+          <Link to="/dashboard/profile" style={{ textDecoration: 'none' }}>
+            <div style={{ 
+              width: '75px', height: '75px', borderRadius: '50%', background: 'var(--primary-pink)', 
+              display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 12px auto',
+              color: 'white', fontSize: '2rem', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(244, 166, 184, 0.4)',
+              overflow: 'hidden', cursor: 'pointer', border: '3px solid white', transition: 'transform 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {user.profile_picture ? (
+                <img src={user.profile_picture} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                user.username.charAt(0).toUpperCase()
+              )}
+            </div>
+          </Link>
+
           <h3 style={{ margin: '0 0 5px 0', color: 'var(--text-dark)', fontSize: '1.1rem' }}>{user.username}</h3>
           <span style={{ 
             fontSize: '0.75rem', background: '#fdf2f5', color: 'var(--dark-pink)', 
@@ -73,6 +86,9 @@ export default function Dashboard() {
           }}>
             {user.role.toUpperCase()}
           </span>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '10px', cursor: 'pointer' }} onClick={() => navigate('/dashboard/profile')}>
+            Edit Profile
+          </p>
         </div>
         
         {/* Navigation */}
